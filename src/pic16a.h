@@ -42,7 +42,10 @@ public:
     std::optional<uint16_t> readDeviceId() override;
 
     std::optional<uint16_t> getConfig(const uint8_t num, const uint16_t mask) override;
+    
+    /** sets the address pointer to 0x8000 and loads the first word */
     void loadConfig() override;
+    
     void writeConfig(const std::vector<uint8_t> &config) override;
 
     void enterProgMode() override;

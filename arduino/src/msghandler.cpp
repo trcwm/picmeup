@@ -118,11 +118,11 @@ void MessageHandler::tick()
         
         m_uart.write(0x86);
         {
-            m_isp.readPgm(m_isp.m_flashBuffer, m_buffer[2]);
+            const auto words = m_buffer[2];
+            m_isp.readPgm(m_isp.m_flashBuffer, words);
 
-            for(uint8_t i=0; i<m_buffer[2]; i++)
+            for(uint8_t i=0; i<words; i++)
             {
-                //FIXME:
                 m_uart.write(m_isp.m_flashBuffer[i] & 0xFF);
                 m_uart.write(m_isp.m_flashBuffer[i] >> 8);
             }

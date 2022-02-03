@@ -41,7 +41,7 @@ void ISP::init()
     ISP_MCLR_1    
 }
 
-void ISP::send(uint16_t data, uint8_t n)
+void ISP::send(uint16_t data, const uint8_t n)
 {
     ISP_DAT_D_0
 
@@ -102,11 +102,11 @@ uint8_t ISP::read8(void)
 
 void ISP::readPgm(uint16_t* data, uint8_t n)
 {
-    for (uint8_t i=0; i<n; i++)  
+    for (uint8_t i=0; i<n; i++)
     {
-        send(0x04, 6);
+        send(0x04, 6);      // Read Data From Program Memory
         data[i] = read14s();
-        send(0x06, 6);
+        incrementPointer();
     }    
 }
 
@@ -119,15 +119,15 @@ void ISP::writePgm(uint8_t *data, uint8_t n)
 {
     for (uint8_t i=0; i<n; i++)  
     {
-        send(0x02,6);
+        send(0x02,6);   // load data for program memory
         send(data[i]<<1,16);  
         if (i != (n-1))
         {
-            send(0x06,6);
+            incrementPointer();
         }
     }
     
-    send(0x08,6);
+    send(0x08,6);       // Begin Internally Timed Programming
     
     const uint8_t slow = 1;
 
@@ -136,19 +136,19 @@ void ISP::writePgm(uint8_t *data, uint8_t n)
     else
         _delay_ms(3);
 
-    send(0x06,6);
+    incrementPointer();
 }
 
 void ISP::sendConfig(uint16_t data)
 {
-    send(0x00, 6);
+    send(0x00, 6);      // Load Configuration 
     send(data, 16);
 }
 
 void ISP::massErase()
 {
     sendConfig(0);
-    send(0x09, 6);
+    send(0x09, 6);      // internally timed bulk erase
     _delay_ms(10);
 }
 
@@ -164,6 +164,7 @@ void ISP::incrementPointer()
 
 void ISP::enterProgMode()
 {
+    // see: https://ww1.microchip.com/downloads/en/DeviceDoc/41573C.pdf
     ISP_MCLR_0
     _delay_us(300);
     send(0b01010000,8);

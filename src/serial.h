@@ -110,6 +110,9 @@ public:
     void write(const std::vector<uint8_t> &data);
 
 protected:
+    void debugRX(uint8_t b);
+    void debugTX(uint8_t b);
+
     Serial(int serialPortHandle) : m_serialPortHandle(serialPortHandle) {}
 
     int m_serialPortHandle = -1;

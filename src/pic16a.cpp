@@ -152,8 +152,8 @@ std::optional<uint16_t> PIC16A::getConfig(const uint8_t num, const uint16_t mask
         return std::nullopt;
     }
 
-    uint16_t deviceHi = page.at(3);
-    uint16_t deviceLo = page.at(2);
+    uint16_t deviceHi = page.at(1);
+    uint16_t deviceLo = page.at(0);
 
     auto id = (deviceLo + (deviceHi << 8)) & mask; 
     return id;    

@@ -1,5 +1,17 @@
+
 #include "serial.h"
+#include <cstdio>
 #include <sys/poll.h>
+
+void Serial::debugRX(uint8_t b)
+{
+    fprintf(stdout, "RX: %02x\n", b);
+}
+
+void Serial::debugTX(uint8_t b)
+{
+    fprintf(stdout, "TX: %02x\n", b);
+}
 
 Serial::~Serial()
 {
@@ -17,6 +29,9 @@ std::optional<uint8_t> Serial::read()
     {
         return std::nullopt;
     }
+
+    debugRX(v);
+
     return v;
 }
 
@@ -29,6 +44,11 @@ std::optional<std::vector<uint8_t> > Serial::read(size_t bytes)
         return std::nullopt;
     }
 
+    for(auto v : buffer)
+    {
+        debugRX(v);
+    }
+    
     return buffer;
 }
 
@@ -81,24 +101,41 @@ void Serial::write(PGMOperation op)
 {
     uint8_t opcode = static_cast<uint8_t>(op);
     ::write(m_serialPortHandle, &opcode, 1);
+    debugTX(opcode);
 }
 
 void Serial::write(uint8_t c)
 {
     ::write(m_serialPortHandle, &c, 1);
+    debugTX(c);
 }
 
 void Serial::write(const char *data, size_t len)
 {
     ::write(m_serialPortHandle, data, len);
+
+    for(size_t i=0; i<len; i++)
+    {
+        debugTX(data[i]);
+    }
 }
 
 void Serial::write(const uint8_t *data, size_t len)
 {
     ::write(m_serialPortHandle, data, len);
+    for(size_t i=0; i<len; i++)
+    {
+        debugTX(data[i]);
+    }    
 }
 
 void Serial::write(const std::vector<uint8_t> &data)
 {
     ::write(m_serialPortHandle, &data[0], data.size());
+    
+    for(size_t i=0; i<data.size(); i++)
+    {
+        debugTX(data.at(i));
+    }    
 }
+

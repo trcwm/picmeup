@@ -7,7 +7,8 @@ class ISP
 public:
     void init();
 
-    void send(uint16_t data, uint8_t n);
+    /** sends up to 16 bits, LSB first */
+    void send(uint16_t data, const uint8_t n);
     
     uint16_t read16(void);
     uint16_t read14s(void);
