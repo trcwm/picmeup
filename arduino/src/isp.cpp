@@ -115,7 +115,7 @@ uint16_t ISP::read14s(void)
     return (read16() & 0x7FFE) >> 1;
 }
 
-void ISP::writePgm(uint8_t *data, uint8_t n)
+void ISP::writePgm(uint16_t *data, uint8_t n)
 {
     for (uint8_t i=0; i<n; i++)  
     {

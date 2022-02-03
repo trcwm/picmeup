@@ -3,15 +3,29 @@
 #include <cstdio>
 #include <sys/poll.h>
 
+#ifdef _DEBUG
+
 void Serial::debugRX(uint8_t b)
 {
-    fprintf(stdout, "RX: %02x\n", b);
+    fprintf(stdout, "RX: %02X\n", b);
 }
 
 void Serial::debugTX(uint8_t b)
 {
-    fprintf(stdout, "TX: %02x\n", b);
+    fprintf(stdout, "TX: %02X\n", b);
 }
+
+#else
+
+void Serial::debugRX(uint8_t b)
+{
+}
+
+void Serial::debugTX(uint8_t b)
+{
+}
+
+#endif
 
 Serial::~Serial()
 {
@@ -138,4 +152,3 @@ void Serial::write(const std::vector<uint8_t> &data)
         debugTX(data.at(i));
     }    
 }
-

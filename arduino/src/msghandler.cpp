@@ -132,6 +132,19 @@ void MessageHandler::tick()
         m_isp.massErase();
         m_uart.write(0x87);
         break;
+    case PGMOperation::WritePage:
+        {
+            const uint8_t words = m_buffer[2]/2;
+            uint8_t *ptr = m_buffer+4;
+            for (uint16_t i=0; i<words; i++)
+            {
+                m_isp.m_flashBuffer[i] = static_cast<uint16_t>(ptr[(2*i)+1]<<8) + static_cast<uint16_t>(ptr[(2*i)]);
+            }
+
+            m_isp.writePgm(m_isp.m_flashBuffer, words);
+        }
+        m_uart.write(0x88);
+        break;
     default:
         m_uart.write(0x00);
         break;

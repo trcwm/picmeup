@@ -15,7 +15,7 @@ public:
     uint8_t  read8(void);
     
     void readPgm(uint16_t* data, uint8_t n);
-    void writePgm(uint8_t* data, uint8_t n);
+    void writePgm(uint16_t* data, uint8_t n);
 
     void enterProgMode();
     void exitProgMode();
