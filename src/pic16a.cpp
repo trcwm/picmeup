@@ -1,11 +1,61 @@
+#include <iostream>
 #include "pic16a.h"
 #include "pgmops.h"
+
+std::ostream& operator<<(std::ostream &os, const PGMOperation &op)
+{
+    switch(op)
+    {
+    case PGMOperation::EnterProgMode:
+        os << "EnterProgMode";
+        break;
+    case PGMOperation::ExitProgMode:
+        os << "ExitProgMode";
+        break;
+    case PGMOperation::LoadConfig:
+        os << "LoadConfig";
+        break;
+    case PGMOperation::MassErasePIC16A:
+        os << "MassErasePIC16A";
+        break;
+    case PGMOperation::PointerIncrement:
+        os << "PointerIncrement";
+        break;
+    case PGMOperation::ReadPage:
+        os << "ReadPage";
+        break;
+    case PGMOperation::ResetPointer:
+        os << "ResetPointer";
+        break;                                        
+    case PGMOperation::WritePage:
+        os << "WritePage";
+        break;                     
+    }
+    return os;
+}
 
 void writeCommand(std::shared_ptr<Serial> &serial, PGMOperation op)
 {
     serial->write(op);
     serial->write(0x00);  // length
-    serial->read();    
+    auto resultOpt = serial->read();
+    if (!resultOpt)
+    {
+        std::cerr << "No response to cmd " << op << "\n";
+        return;
+    }
+    else
+    {
+        if (resultOpt.value() & 0x80)
+        {
+            std::cout << "CMD " << op << " ok\n";
+        }
+        else
+        {
+            std::cerr << "CMD " << op << " failed! reply=";
+            std::cerr << std::hex << static_cast<uint16_t>(resultOpt.value()) << std::dec << "\n";
+        }
+    }
 }
 
 void PIC16A::resetPointer()
@@ -18,6 +68,17 @@ void PIC16A::incPointer(uint8_t number)
     m_serial->write(PGMOperation::PointerIncrement);
     m_serial->write(0x01);  // length
     m_serial->write(number);
+    
+    auto resultOpt = m_serial->read();
+    if ((!resultOpt) || (!(resultOpt.value() & 0x80)))
+    {
+        std::cerr << "CMD PointerIncrement failed - reply=";
+        std::cerr << std::hex << static_cast<uint16_t>(resultOpt.value()) << std::dec << "\n";
+    }
+    else
+    {
+        std::cout << "CMD PointerIncrement ok!\n";
+    }
 
 }
 
@@ -39,7 +100,16 @@ void PIC16A::writePage(const uint8_t *data, uint8_t numBytes)
     m_serial->write(1);     // speed, 1 = slow, 0 = fast ?
     
     m_serial->write(data, numBytes);
-    m_serial->read();
+
+    auto resultOpt = m_serial->read();
+    if ((!resultOpt) || (!(resultOpt.value() & 0x80)))
+    {
+        std::cout << "CMD WritePage failed\n";
+    }
+    else
+    {
+        std::cout << "CMD WritePage ok\n";
+    }
 }
 
 std::vector<uint8_t> PIC16A::readPage(uint8_t num)

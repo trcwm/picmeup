@@ -1,7 +1,10 @@
-#define F_CPU 16000000UL
+#define F_CPU 16000000
+
 #include <avr/io.h>
 #include <util/delay.h>
 #include "isp.h"
+
+#include "../../src/pgmops.h"
 
 #define ISP_PORT  PORTC
 #define ISP_DDR   DDRC
@@ -10,23 +13,23 @@
 #define ISP_DAT   1
 #define ISP_CLK   0
 
-#define  ISP_MCLR_1 ISP_PORT |= (1<<ISP_MCLR);
-#define  ISP_MCLR_0 ISP_PORT &= ~(1<<ISP_MCLR);
-#define  ISP_MCLR_D_I ISP_DDR &= ~(1<<ISP_MCLR);
-#define  ISP_MCLR_D_0 ISP_DDR |= (1<<ISP_MCLR);
+#define  ISP_MCLR_1   ISP_PORT |= (1<<ISP_MCLR);
+#define  ISP_MCLR_0   ISP_PORT &= ~(1<<ISP_MCLR);
+#define  ISP_MCLR_D_I ISP_DDR  &= ~(1<<ISP_MCLR);
+#define  ISP_MCLR_D_0 ISP_DDR  |= (1<<ISP_MCLR);
 
-#define  ISP_DAT_1 ISP_PORT |= (1<<ISP_DAT);
-#define  ISP_DAT_0 ISP_PORT &= ~(1<<ISP_DAT);
-#define  ISP_DAT_V (ISP_PIN&(1<<ISP_DAT))
-#define  ISP_DAT_D_I ISP_DDR &= ~(1<<ISP_DAT);
-#define  ISP_DAT_D_0 ISP_DDR |= (1<<ISP_DAT);
+#define  ISP_DAT_1    ISP_PORT |= (1<<ISP_DAT);
+#define  ISP_DAT_0    ISP_PORT &= ~(1<<ISP_DAT);
+#define  ISP_DAT_V    (ISP_PIN&(1<<ISP_DAT))
+#define  ISP_DAT_D_I  ISP_DDR &= ~(1<<ISP_DAT);
+#define  ISP_DAT_D_0  ISP_DDR |= (1<<ISP_DAT);
 
-#define  ISP_CLK_1 ISP_PORT |= (1<<ISP_CLK);
-#define  ISP_CLK_0 ISP_PORT &= ~(1<<ISP_CLK);
-#define  ISP_CLK_D_I ISP_DDR &= ~(1<<ISP_CLK);
-#define  ISP_CLK_D_0 ISP_DDR |= (1<<ISP_CLK);
+#define  ISP_CLK_1    ISP_PORT |= (1<<ISP_CLK);
+#define  ISP_CLK_0    ISP_PORT &= ~(1<<ISP_CLK);
+#define  ISP_CLK_D_I  ISP_DDR &= ~(1<<ISP_CLK);
+#define  ISP_CLK_D_0  ISP_DDR |= (1<<ISP_CLK);
 
-#define  ISP_CLK_DELAY  1
+#define  ISP_CLK_DELAY  4
 
 void ISP::init()
 {
@@ -38,12 +41,11 @@ void ISP::init()
     ISP_MCLR_1    
 }
 
-void ISP::send(uint8_t data, uint8_t n)
+void ISP::send(uint16_t data, uint8_t n)
 {
-    uint8_t i;
     ISP_DAT_D_0
 
-    for (i=0; i<n; i++)
+    for(uint8_t i=0; i<n; i++)
     {
         if (data & 0x01)
         {
@@ -53,10 +55,11 @@ void ISP::send(uint8_t data, uint8_t n)
         {
             ISP_DAT_0
         }
+        
         _delay_us(ISP_CLK_DELAY);
         ISP_CLK_1
         
-        data = data >> 1;
+        data >>= 1;
 
         ISP_CLK_0
         ISP_DAT_0
@@ -97,7 +100,7 @@ uint8_t ISP::read8(void)
     return out;    
 }
 
-void ISP::readPgm(uint8_t* data, uint8_t n)
+void ISP::readPgm(uint16_t* data, uint8_t n)
 {
     for (uint8_t i=0; i<n; i++)  
     {
@@ -136,17 +139,45 @@ void ISP::writePgm(uint8_t *data, uint8_t n)
     send(0x06,6);
 }
 
-void ISP::isp_mass_erase()
+void ISP::sendConfig(uint16_t data)
 {
+    send(0x00, 6);
+    send(data, 16);
+}
 
+void ISP::massErase()
+{
+    sendConfig(0);
+    send(0x09, 6);
+    _delay_ms(10);
 }
 
 void ISP::resetPointer()
 {
-    isp_send(0x16,6);
+    send(0x16,6);
 }
 
-void isp_send_8_msb(unsigned char data)
+void ISP::incrementPointer()
 {
+    send(0x06,6);
+}
 
+void ISP::enterProgMode()
+{
+    ISP_MCLR_0
+    _delay_us(300);
+    send(0b01010000,8);
+    send(0b01001000,8);
+    send(0b01000011,8);
+    send(0b01001101,8);
+    send(0,1);
+}
+
+void ISP::exitProgMode()
+{
+    ISP_MCLR_1
+    _delay_ms(30);
+    ISP_MCLR_0
+    _delay_ms(30);
+    ISP_MCLR_1
 }

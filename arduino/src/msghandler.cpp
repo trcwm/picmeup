@@ -1,12 +1,26 @@
+#include <avr/io.h>
 #include "msghandler.h"
+#include "../../src/pgmops.h"
 
 void MessageHandler::init()
 {
+    DDRB |= (1<<5); // enable LED output pin
     m_uart.init();
+    m_isp.init();
+    ledOff();
 }
 
-// FIXME: we really should change this to COBS encoding
-bool MessageHandler::tick()
+void MessageHandler::ledOn()
+{
+    PORTB |= (1<<5);
+}
+
+void MessageHandler::ledOff()
+{
+    PORTB &= ~(1<<5);
+}
+
+bool MessageHandler::loop()
 {
     while(m_uart.hasData())
     {
@@ -44,4 +58,84 @@ bool MessageHandler::tick()
         }
     }
     return false;
+}
+
+// FIXME: we really should change this to COBS encoding
+void MessageHandler::tick()
+{
+    while(!loop()) {};
+
+    if (m_bufferIdx <= 0)
+    {
+        // some kind of error!
+        return;
+    }
+
+    ledOn();
+
+    auto cmdId = m_buffer[0];
+    switch(static_cast<PGMOperation>(cmdId))
+    {
+    case PGMOperation::EnterProgMode:
+        m_isp.enterProgMode();
+        m_uart.write(0x81);
+        break;
+    case PGMOperation::ExitProgMode:
+        m_isp.exitProgMode();
+        m_uart.write(0x82);
+        break;        
+    case PGMOperation::ResetPointer:
+        m_isp.resetPointer();
+        m_uart.write(0x83);
+        break;
+    case PGMOperation::LoadConfig:
+        m_isp.sendConfig(0);
+        m_uart.write(0x84);
+        break;
+    case PGMOperation::PointerIncrement:
+        {
+            if (m_bufferIdx != 3)
+            {
+                m_uart.write(0x05);
+                // error!
+                return;
+            }
+
+            for(uint8_t i=0; i<m_buffer[2]; i++)
+            {
+                m_isp.incrementPointer();
+            }
+            m_uart.write(0x85);
+        }
+        break;
+    case PGMOperation::ReadPage:
+        if (m_bufferIdx != 3)
+        {
+            m_uart.write(0x06);
+            // error!
+            return;
+        }    
+        
+        m_uart.write(0x86);
+        {
+            m_isp.readPgm(m_isp.m_flashBuffer, m_buffer[2]);
+
+            for(uint8_t i=0; i<m_buffer[2]; i++)
+            {
+                //FIXME:
+                m_uart.write(m_isp.m_flashBuffer[i] & 0xFF);
+                m_uart.write(m_isp.m_flashBuffer[i] >> 8);
+            }
+        }
+        break;
+    case PGMOperation::MassErasePIC16A:
+        m_isp.massErase();
+        m_uart.write(0x87);
+        break;
+    default:
+        m_uart.write(0x00);
+        break;
+    }
+
+    ledOff();
 }
