@@ -11,15 +11,13 @@ public:
     void resetPointer() override;
     void incPointer(uint8_t number) override;
     
-    void                    writePage(const uint8_t *data, uint8_t numBytes) override;
+    bool                    writePage(const std::vector<uint8_t> &data) override;
     std::vector<uint8_t>    readPage(uint8_t num) override;
     std::optional<uint16_t> readDeviceId() override;
 
-    std::optional<uint16_t> getConfig(const uint8_t num, const uint16_t mask) override;
+    std::optional<uint16_t> getConfigWord(uint32_t wordOffset) override;
     
-    /** sets the address pointer to 0x8000 and loads the first word */
     void loadConfig() override;
-    
     void writeConfig(const std::vector<uint8_t> &config) override;
 
     void enterProgMode() override;

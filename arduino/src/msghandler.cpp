@@ -109,6 +109,12 @@ void MessageHandler::tick()
         }
         break;
     case PGMOperation::ReadPage:
+        /*
+            Buffer layout:
+            0x00: operation ID
+            0x01: total bytes of payload = 1
+            0x02: number of words to read
+        */    
         if (m_bufferIdx != 3)
         {
             m_uart.write(0x06);
@@ -134,7 +140,16 @@ void MessageHandler::tick()
         break;
     case PGMOperation::WritePage:
         {
-            const uint8_t words = m_buffer[2]/2;
+            /*
+                Buffer layout:
+                0x00: operation ID
+                0x01: total bytes of payload
+                0x02: number of words to program
+                0x03: speed 1 = slow, 0 = fast
+                0x04: first byte (MSB) of first word
+                0x05: second byte of first word etc..
+            */
+            const uint8_t words = m_buffer[2];
             uint8_t *ptr = m_buffer+4;
             for (uint16_t i=0; i<words; i++)
             {

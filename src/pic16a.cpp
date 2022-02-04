@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include "pic16a.h"
 #include "pgmops.h"
 
@@ -92,35 +93,52 @@ void PIC16A::loadConfig()
     writeCommand(m_serial, PGMOperation::LoadConfig, m_verbose);
 }
 
-void PIC16A::writePage(const uint8_t *data, uint8_t numBytes)
+bool PIC16A::writePage(const std::vector<uint8_t> &data)
 {
-    m_serial->write(PGMOperation::WritePage);  // write page?
-    m_serial->write(numBytes+2);
-    m_serial->write(numBytes);
-    m_serial->write(1);     // speed, 1 = slow, 0 = fast ?
+    if ((data.size() % 2) == 1)
+    {
+        // data must be an even number of bytes!
+        return false;
+    }
+
+    auto payloadBytes = data.size() + 2;
+    m_serial->write(PGMOperation::WritePage);
+    m_serial->write(payloadBytes);
+    m_serial->write(data.size()/2); // number of words, not bytes.
+    m_serial->write(1);             // speed, 1 = slow, 0 = fast ?
     
-    m_serial->write(data, numBytes);
+    m_serial->write(data);
 
     auto resultOpt = m_serial->read();
     if ((!resultOpt) || (!(resultOpt.value() & 0x80)))
     {
         std::cout << "CMD WritePage failed\n";
+        return false;
     }
-    else
-    {
-        if (m_verbose) std::cout << "CMD WritePage ok\n";
-    }
+    
+    if (m_verbose) std::cout << "CMD WritePage ok\n";
+    return true;
 }
 
-std::vector<uint8_t> PIC16A::readPage(uint8_t num)
+std::vector<uint8_t> PIC16A::readPage(uint8_t numberOfWords)
 {
+    const auto numberOfBytes = numberOfWords*2;
+
     m_serial->write(PGMOperation::ReadPage);
     m_serial->write(0x01);
-    m_serial->write(num / 2);
-    m_serial->read();
+    m_serial->write(numberOfWords);
+    auto resultOpt = m_serial->read();
+    if (!resultOpt)
+    {
+        return std::vector<uint8_t>();
+    }
+    if (resultOpt.value() != (static_cast<uint8_t>(PGMOperation::ReadPage) | 0x80))
+    {
+        return std::vector<uint8_t>();
+    }
 
-    std::vector<uint8_t> page(num, 0);
-    for(uint8_t i=0; i<num; i++)
+    std::vector<uint8_t> page(numberOfBytes, 0);
+    for(uint8_t i=0; i<numberOfBytes; i++)
     {
         auto optByte = m_serial->read();
         if (optByte.has_value())
@@ -137,26 +155,27 @@ std::vector<uint8_t> PIC16A::readPage(uint8_t num)
 
 std::optional<uint16_t> PIC16A::readDeviceId()
 {
-    return getConfig(6, 0xffff);
+    return getConfigWord(6);
 }
 
-std::optional<uint16_t> PIC16A::getConfig(const uint8_t num, const uint16_t mask)
+
+std::optional<uint16_t> PIC16A::getConfigWord(uint32_t wordOffset)
 {
     resetPointer();
     loadConfig();
-    incPointer(num);
-    auto page = readPage(4);
+    incPointer(wordOffset);
+    auto page = readPage(1);
 
     if (page.size() == 0)
     {
         return std::nullopt;
     }
 
-    uint16_t deviceHi = page.at(1);
-    uint16_t deviceLo = page.at(0);
+    uint16_t byteHi = page.at(1);
+    uint16_t byteLo = page.at(0);
 
-    auto id = (deviceLo + (deviceHi << 8)) & mask; 
-    return id;    
+    auto word = (byteLo + (byteHi << 8)); 
+    return word;    
 }
 
 void PIC16A::writeConfig(const std::vector<uint8_t> &config)
@@ -165,8 +184,16 @@ void PIC16A::writeConfig(const std::vector<uint8_t> &config)
     loadConfig();
     incPointer(7);
 
-    writePage(&config[0], 2); // slow write
-    writePage(&config[2], 2); // slow write
+    std::vector<uint8_t> word1;
+    std::vector<uint8_t> word2;
+
+    word1.push_back(config.at(0));
+    word1.push_back(config.at(1));
+    word2.push_back(config.at(2));
+    word2.push_back(config.at(3));
+
+    writePage(word1); // slow write
+    writePage(word2); // slow write
 
     // for B and D chips: writePage(/* word 0x8009 */, 2); // slow write
     // additionally for D chips: writePage(/* word 0x800A */, 2); // slow write

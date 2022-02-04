@@ -9,5 +9,5 @@ enum class PGMOperation : uint8_t
     PointerIncrement    = 0x05,    
     ReadPage            = 0x06,
     MassErasePIC16A     = 0x07,
-    WritePage           = 0x08
+    WritePage           = 0x08  ///< 
 };

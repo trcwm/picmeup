@@ -31,16 +31,39 @@ struct DeviceInfo
 
 bool isEmptyMem(const std::vector<uint8_t> &mem, size_t start, size_t len)
 {
+    if ((len & 1) != 0)
+    {
+        std::cerr << "Error: isEmptyMem called with odd number of bytes\n";
+        return false;
+    }
+
     while(len > 0)
     {
-        if (mem.at(start++) != 0xFF)
+        auto low = static_cast<uint16_t>(mem.at(start));
+        auto hi  = static_cast<uint16_t>(mem.at(start+1));
+
+        //FIXME: for PIC16, the program word is 14 bits
+        //       so we need to check against 0x3FFF
+        //       however, for other parts it might be wider..
+
+        auto word = low | (hi<<8);
+        if (word != 0x3FFF)
         {
             return false;
         }
-        len--;
+
+        start += 2;
+        len-=2;
     }
     return true;
 }
+
+bool isEmptyMem(const std::vector<uint8_t> &mem)
+{
+    auto len = mem.size();
+    return isEmptyMem(mem, 0, len);
+}
+
 
 void showTargetDeviceInfo(const DeviceInfo &info)
 {
@@ -119,7 +142,7 @@ std::vector<DeviceInfo> readDeviceInfo(const std::string &filename)
             std::cerr << "Error parsing flash mem size on line " << lineNum << "\n";
             return std::vector<DeviceInfo>();
         }
-        dev.flashMemSize = flashMemOpt.value();
+        dev.flashMemSize = flashMemOpt.value() / 2;     // convert bytes to words
 
         // read flash mem size (in words)
         auto flashPageOpt = Utils::intStrToint32(tokens.at(2));
@@ -128,7 +151,7 @@ std::vector<DeviceInfo> readDeviceInfo(const std::string &filename)
             std::cerr << "Error parsing flash page size on line " << lineNum << "\n";
             return std::vector<DeviceInfo>();
         }
-        dev.flashPageSize = flashPageOpt.value();
+        dev.flashPageSize = flashPageOpt.value() / 2;   // convert bytes to words
 
         // read device ID
         auto deviceIdOpt = Utils::hexStrToUint32(tokens.at(3));
@@ -205,6 +228,7 @@ int main(int argc, char *argv[])
     bool download;
     bool verbose;
     bool cpuErase;
+    bool blankCheck = true;
 
     std::cout << "--== PICMEUP version 0.1a ==--\n\n";
     try
@@ -329,6 +353,15 @@ int main(int argc, char *argv[])
     std::vector<uint8_t> flashMem(targetDeviceInfo.flashMemSize*2, 0xFF);
     std::vector<uint8_t> configMem(targetDeviceInfo.configSize*2,  0xFF);
 
+    // FIXME: PIC16 has 14-bit word, so we need
+    //        to make sure the top 2 bits are 0
+    //        however, other PICs might have
+    //        a wide pgm word..
+    for(size_t idx=1; idx<flashMem.size(); idx+=2)
+    {
+        flashMem.at(idx) &= 0x3F;
+    }
+
     // read the input hex file if there is one
     if (!uploadHexfileName.empty())
     {
@@ -340,11 +373,35 @@ int main(int argc, char *argv[])
         HexReader::read(uploadHexfileName, flashMem, configMem);
     }
 
-    if (cpuErase)
+    bool isBlank = true;
+    if (blankCheck)
+    {
+        std::cout << "Blank check\n";
+        pgm->resetPointer();        
+        for(size_t address=0; address < targetDeviceInfo.flashMemSize; address += targetDeviceInfo.flashPageSize)
+        {
+            auto page = pgm->readPage(targetDeviceInfo.flashPageSize);
+            if (page.size() == 0)
+            {
+                std::cout << "Could not read page\n";
+                pgm->exitProgMode();
+                return EXIT_FAILURE;
+            }
+            if (!isEmptyMem(page))
+            {
+                std::cout << "### Warning: uC is not blank! ###\n";
+                isBlank = false;
+                break;
+            }
+        }
+    }
+
+    if (cpuErase & !isBlank)
     {
         std::cout << "Erasing flash memory\n";
         pgm->resetPointer();
         pgm->massErase();
+        sleep(1);
     }
 
     if (upload)
@@ -353,16 +410,24 @@ int main(int argc, char *argv[])
         pgm->resetPointer();
 
         for(size_t address=0; address < targetDeviceInfo.flashMemSize; address += targetDeviceInfo.flashPageSize)
-        {
-            pgm->writePage(&flashMem[address*2], targetDeviceInfo.flashPageSize*2);
-            std::cout << "#" << std::flush;
+        {   
+            std::vector<uint8_t> memChunk(flashMem.begin() + address*2, flashMem.begin() + (address+targetDeviceInfo.flashPageSize)*2);
+            pgm->writePage(memChunk);
+
+            if (isEmptyMem(memChunk))
+            {
+                std::cout << "." << std::flush;
+            }
+            else
+            {
+                std::cout << "#" << std::flush;
+            }            
         }
 
         std::cout << "\nProgramming config..\n";
         pgm->writeConfig(configMem);
     }
 
-    
     if (verify)
     {
         std::cout << "Verifying..\n";
@@ -373,35 +438,31 @@ int main(int argc, char *argv[])
             size_t offset = 0;
             for(auto byte : page)
             {
-                //printf("%02X", byte);
-                //if ((offset % 16) == 15)
-                //{
-                //    printf("\n");
-                //}
-#if 1   
                 if (byte != flashMem.at(address*2 + offset))
                 {
-                    std::cout << "Verification failure at address " << std::hex << std::uppercase;
-                    std::cout << address + offset << std::nouppercase << std::dec << "\n";
+                    std::cout << "Verification failure at byte address 0x" << Utils::toHex(address*2 + offset) << "\n";
 
                     // dump the page
                     size_t o = 0;
                     for(auto byte2 : page)
                     {
-                        printf("have %02X - want %02X\n", byte2, flashMem[o++]);
+                        if (byte2 != flashMem.at(address*2 + o))
+                        {
+                            std::cout << "  " << Utils::toHex(address*2 + o) << "  have " << Utils::toHex(byte2,2);
+                            std::cout << " - want " << Utils::toHex(address*2+o,2) << "\n";
+                        }                        
+                        o++;
                     }
 
                     pgm->exitProgMode();
                     return EXIT_FAILURE;
                 }
-#endif                
                 offset++;
             }
         }
         std::cout << "Verify ok!\n";
     }    
     
-
 #if 0
     std::cout << "Reading from address 0\n";
     pgm.resetPointer();
