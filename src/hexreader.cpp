@@ -69,7 +69,7 @@ void HexReader::read(const std::string &filename,
 
                 if (effectiveAddress < flash.size())
                 {
-                    flash.at(effectiveAddress) = byte;
+                    flash.at(effectiveAddress+i) = byte;
                 }
                 else if (addressOffset == 0x01)
                 {

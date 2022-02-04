@@ -367,16 +367,24 @@ int main(int argc, char *argv[])
             size_t offset = 0;
             for(auto byte : page)
             {
-                printf("%02X", byte);
-                if ((offset % 16) == 15)
-                {
-                    printf("\n");
-                }
-#if 0   
+                //printf("%02X", byte);
+                //if ((offset % 16) == 15)
+                //{
+                //    printf("\n");
+                //}
+#if 1   
                 if (byte != flashMem.at(address*2 + offset))
                 {
-                    std::cout << "Verificiation failure at address " << std::hex << std::uppercase;
+                    std::cout << "Verification failure at address " << std::hex << std::uppercase;
                     std::cout << address + offset << std::nouppercase << std::dec << "\n";
+
+                    // dump the page
+                    size_t o = 0;
+                    for(auto byte2 : page)
+                    {
+                        printf("have %02X - want %02X\n", byte2, flashMem[o++]);
+                    }
+
                     pgm.exitProgMode();
                     return EXIT_FAILURE;
                 }
@@ -384,6 +392,7 @@ int main(int argc, char *argv[])
                 offset++;
             }
         }
+        std::cout << "Verify ok!\n";
     }    
     
 
