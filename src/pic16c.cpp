@@ -1,11 +1,11 @@
 #include <iostream>
-#include "pic16b.h"
+#include "pic16c.h"
 
-void PIC16B::writeConfig(const std::vector<uint8_t> &config)
+void PIC16C::writeConfig(const std::vector<uint8_t> &config)
 {
     if (config.size() != 6)
     {
-        std::cerr << "Error: writeConfig requires 6 bytes\n";
+        std::cerr << "Error: writeConfig requires 4 bytes\n";
         return;
     }
 

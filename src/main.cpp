@@ -82,9 +82,9 @@ std::vector<DeviceInfo> readDeviceInfo(const std::string &filename)
     const std::array<FamilyInfo, 12> validFamilies = 
     {
         {{"CF_P16F_A", 2},
-        {"CF_P16F_B", 2},
-        {"CF_P16F_C", 2},  
-        {"CF_P16F_D", 2},
+        {"CF_P16F_B",  3},
+        {"CF_P16F_C",  2},  
+        {"CF_P16F_D",  2},
         {"CF_P18F_A", 16},
         {"CF_P18F_B",  8},
         {"CF_P18F_C", 16 /* basically CF_P18F_A */},
