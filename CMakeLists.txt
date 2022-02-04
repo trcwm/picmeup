@@ -8,6 +8,7 @@ add_executable(picmeup
     src/hexreader.cpp
     src/pgmfactory.cpp
     src/pic16a.cpp
+    src/pic16b.cpp
     src/serial.cpp
     src/main.cpp
 )

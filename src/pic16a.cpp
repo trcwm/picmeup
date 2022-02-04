@@ -180,6 +180,12 @@ std::optional<uint16_t> PIC16A::getConfigWord(uint32_t wordOffset)
 
 void PIC16A::writeConfig(const std::vector<uint8_t> &config)
 {
+    if (config.size() != 4)
+    {
+        std::cerr << "Error: writeConfig requires 4 bytes\n";
+        return;
+    }
+
     resetPointer();
     loadConfig();
     incPointer(7);
@@ -194,9 +200,6 @@ void PIC16A::writeConfig(const std::vector<uint8_t> &config)
 
     writePage(word1); // slow write
     writePage(word2); // slow write
-
-    // for B and D chips: writePage(/* word 0x8009 */, 2); // slow write
-    // additionally for D chips: writePage(/* word 0x800A */, 2); // slow write
 }
 
 void PIC16A::enterProgMode() 
