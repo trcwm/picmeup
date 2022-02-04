@@ -34,7 +34,7 @@ std::ostream& operator<<(std::ostream &os, const PGMOperation &op)
     return os;
 }
 
-void writeCommand(std::shared_ptr<Serial> &serial, PGMOperation op)
+void writeCommand(std::shared_ptr<Serial> &serial, PGMOperation op, bool verbose)
 {
     serial->write(op);
     serial->write(0x00);  // length
@@ -48,7 +48,7 @@ void writeCommand(std::shared_ptr<Serial> &serial, PGMOperation op)
     {
         if (resultOpt.value() & 0x80)
         {
-            std::cout << "CMD " << op << " ok\n";
+            if (verbose) std::cout << "CMD " << op << " ok\n";
         }
         else
         {
@@ -60,7 +60,7 @@ void writeCommand(std::shared_ptr<Serial> &serial, PGMOperation op)
 
 void PIC16A::resetPointer()
 {
-    writeCommand(m_serial, PGMOperation::ResetPointer);
+    writeCommand(m_serial, PGMOperation::ResetPointer, m_verbose);
 }
 
 void PIC16A::incPointer(uint8_t number)
@@ -77,19 +77,19 @@ void PIC16A::incPointer(uint8_t number)
     }
     else
     {
-        std::cout << "CMD PointerIncrement ok!\n";
+        if (m_verbose) std::cout << "CMD PointerIncrement ok!\n";
     }
 
 }
 
 void PIC16A::massErase()
 {
-    writeCommand(m_serial, PGMOperation::MassErasePIC16A);
+    writeCommand(m_serial, PGMOperation::MassErasePIC16A, m_verbose);
 }
 
 void PIC16A::loadConfig()
 {
-    writeCommand(m_serial, PGMOperation::LoadConfig);
+    writeCommand(m_serial, PGMOperation::LoadConfig, m_verbose);
 }
 
 void PIC16A::writePage(const uint8_t *data, uint8_t numBytes)
@@ -108,7 +108,7 @@ void PIC16A::writePage(const uint8_t *data, uint8_t numBytes)
     }
     else
     {
-        std::cout << "CMD WritePage ok\n";
+        if (m_verbose) std::cout << "CMD WritePage ok\n";
     }
 }
 
@@ -174,10 +174,10 @@ void PIC16A::writeConfig(const std::vector<uint8_t> &config)
 
 void PIC16A::enterProgMode() 
 {
-    writeCommand(m_serial, PGMOperation::EnterProgMode);
+    writeCommand(m_serial, PGMOperation::EnterProgMode, m_verbose);
 }
 
 void PIC16A::exitProgMode()
 {
-    writeCommand(m_serial, PGMOperation::ExitProgMode);
+    writeCommand(m_serial, PGMOperation::ExitProgMode, m_verbose);
 }

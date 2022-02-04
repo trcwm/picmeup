@@ -23,6 +23,7 @@ public:
     virtual void exitProgMode() = 0;
 
 protected:
+    bool m_verbose = false;
     std::shared_ptr<Serial> m_serial;
 };
 
