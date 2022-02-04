@@ -6,7 +6,7 @@
 
 #include "utils.h"
 #include "serial.h"
-#include "pic16a.h"
+#include "pgmfactory.h"
 
 #include "contrib/cxxopts.hpp"
 #include "hexreader.h"
@@ -170,19 +170,28 @@ std::vector<DeviceInfo> readDeviceInfo(const std::string &filename)
     return info;
 };
 
-bool checkDevice(IDeviceProgrammer &iface, const DeviceInfo &target)
+bool checkDevice(std::shared_ptr<IDeviceProgrammer> iface, const DeviceInfo &target)
 {
     // read the device ID from the interface.
     // note: the programmer must be in programming mode to make this work
 
-    auto idOpt = iface.readDeviceId();
+    auto idOpt = iface->readDeviceId();
     if (!idOpt)
     {
         std::cerr << "Could not read device ID!\n";
         return false;
     }
 
-    return (idOpt.value() & target.deviceIdMask) == target.deviceId;
+    const uint32_t IDcheck = idOpt.value() & target.deviceIdMask;
+
+    bool IDok = (IDcheck == target.deviceId);
+    if (!IDok)
+    {
+        std::cerr << "Device ID mismatch! Wanted " << Utils::toHex(target.deviceId) << " but got " << Utils::toHex(IDcheck) << "\n";
+        return false;
+    }
+
+    return true;    
 }
 
 int main(int argc, char *argv[])
@@ -272,6 +281,8 @@ int main(int argc, char *argv[])
 
     showTargetDeviceInfo(targetDeviceInfo);
 
+    std::cout << "\n";
+
     auto serial = Serial::open(comName.c_str(), 57600);
     if (serial)
     {
@@ -279,7 +290,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        std::cout << "Error opening serial port!\n";
+        std::cout << "Error opening serial port " << comName << " !\n";
         return EXIT_FAILURE;
     }
 
@@ -295,13 +306,19 @@ int main(int argc, char *argv[])
 
     // FIXME: use factory to create the correct programmer
     // for the device family
-    PIC16A pgm(serial);
+    auto pgm = ProgrammerFactory::create(targetDeviceInfo.deviceFamily, serial);
 
-    pgm.enterProgMode();
+    if (!pgm)
+    {
+        std::cerr << "Device family " << targetDeviceInfo.deviceFamily << " is not supported\n";
+        return EXIT_FAILURE;
+    }
+
+    pgm->enterProgMode();
 
     if (!checkDevice(pgm, targetDeviceInfo))
     {
-        pgm.exitProgMode();
+        pgm->exitProgMode();
         return EXIT_FAILURE;
     }
     else
@@ -326,44 +343,33 @@ int main(int argc, char *argv[])
     if (cpuErase)
     {
         std::cout << "Erasing flash memory\n";
-        pgm.resetPointer();
-        pgm.massErase();
+        pgm->resetPointer();
+        pgm->massErase();
     }
 
     if (upload)
     {
         std::cout << "Programming flash..\n";
-        pgm.resetPointer();
+        pgm->resetPointer();
 
         for(size_t address=0; address < targetDeviceInfo.flashMemSize; address += targetDeviceInfo.flashPageSize)
         {
-            pgm.writePage(&flashMem[address*2], targetDeviceInfo.flashPageSize*2);
+            pgm->writePage(&flashMem[address*2], targetDeviceInfo.flashPageSize*2);
             std::cout << "#" << std::flush;
-#if 0            
-            if (!isEmptyMem(flashMem, address, targetDeviceInfo.flashPageSize))
-            {
-                
-                
-            }
-            else
-            {
-                std::cout << ".";
-            }
-#endif
         }
 
         std::cout << "\nProgramming config..\n";
-        pgm.writeConfig(configMem);
+        pgm->writeConfig(configMem);
     }
 
     
     if (verify)
     {
         std::cout << "Verifying..\n";
-        pgm.resetPointer();
+        pgm->resetPointer();
         for(size_t address=0; address < targetDeviceInfo.flashMemSize; address += targetDeviceInfo.flashPageSize)
         {
-            auto page = pgm.readPage(targetDeviceInfo.flashPageSize);
+            auto page = pgm->readPage(targetDeviceInfo.flashPageSize);
             size_t offset = 0;
             for(auto byte : page)
             {
@@ -385,7 +391,7 @@ int main(int argc, char *argv[])
                         printf("have %02X - want %02X\n", byte2, flashMem[o++]);
                     }
 
-                    pgm.exitProgMode();
+                    pgm->exitProgMode();
                     return EXIT_FAILURE;
                 }
 #endif                
@@ -452,7 +458,7 @@ int main(int argc, char *argv[])
     pgm.massErase();
 #endif
 
-    pgm.exitProgMode();
+    pgm->exitProgMode();
 
     std::cout << "Done.\n";
 

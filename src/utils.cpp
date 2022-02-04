@@ -62,6 +62,28 @@ std::optional<uint32_t> Utils::hexStrToUint32(const std::string &str)
     return result;
 }
 
+std::string Utils::toHex(uint32_t v, uint32_t digits)
+{
+    std::string result;
+    while(digits > 0)
+    {
+        digits--;
+        auto nibble = (v >> (digits*4)) & 0xF;
+        char digit = ' ';
+        if (nibble > 9)
+        {
+            digit = 'A' + nibble-10;
+        }
+        else
+        {
+            digit = '0' + nibble;
+        }
+        result += digit;
+    }
+
+    return result;
+}
+
 std::vector<std::string> Utils::tokenize(const std::string &str, const char delim)
 {
     std::vector<std::string> out;
