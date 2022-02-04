@@ -412,14 +412,15 @@ int main(int argc, char *argv[])
         for(size_t address=0; address < targetDeviceInfo.flashMemSize; address += targetDeviceInfo.flashPageSize)
         {   
             std::vector<uint8_t> memChunk(flashMem.begin() + address*2, flashMem.begin() + (address+targetDeviceInfo.flashPageSize)*2);
-            pgm->writePage(memChunk);
-
+            
             if (isEmptyMem(memChunk))
             {
+                pgm->incPointer(targetDeviceInfo.flashPageSize);
                 std::cout << "." << std::flush;
             }
             else
             {
+                pgm->writePage(memChunk);
                 std::cout << "#" << std::flush;
             }            
         }
@@ -463,62 +464,6 @@ int main(int argc, char *argv[])
         std::cout << "Verify ok!\n";
     }    
     
-#if 0
-    std::cout << "Reading from address 0\n";
-    pgm.resetPointer();
-    auto page = pgm.readPage(64);
-
-    if (page.empty())
-    {
-        std::cerr << "Could not read page!";
-    }
-    else
-    {
-        size_t count = 0;
-        for(auto c : page)
-        {            
-            fprintf(stdout, "%02X ", c);
-            count++;
-            if (count == 16)
-            {
-                fprintf(stdout, "\n");
-                count = 0;
-            }
-        }
-    }
-
-    std::cout << "Writing to address 0\n";
-    pgm.resetPointer();    
-    std::vector<uint8_t> data;
-    data.resize(64,0);    
-    pgm.writePage(&data[0], data.size());
-
-    std::cout << "Reading from address 0\n";
-    pgm.resetPointer();
-    page = pgm.readPage(64);
-
-    if (page.empty())
-    {
-        std::cerr << "Could not read page!";
-    }
-    else
-    {
-        size_t count = 0;
-        for(auto c : page)
-        {            
-            fprintf(stdout, "%02X ", c);
-            count++;
-            if (count == 16)
-            {
-                fprintf(stdout, "\n");
-                count = 0;
-            }
-        }
-    }
-
-    pgm.massErase();
-#endif
-
     pgm->exitProgMode();
 
     std::cout << "Done.\n";
