@@ -166,7 +166,7 @@ std::optional<uint16_t> PIC16A::getConfigWord(uint32_t wordOffset)
     incPointer(wordOffset);
     auto page = readPage(1);
 
-    if (page.size() == 0)
+    if (page.size() != 2)
     {
         return std::nullopt;
     }

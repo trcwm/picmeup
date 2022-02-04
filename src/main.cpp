@@ -11,13 +11,6 @@
 #include "contrib/cxxopts.hpp"
 #include "hexreader.h"
 
-/*
-# name   flash page  ID  mask family_type
-# flash size and page size in bytes 1 WORD = 2 BYTES
-# 
-# PIC16 family
-*/
-
 struct DeviceInfo
 {
     std::string deviceName;
@@ -228,6 +221,8 @@ int main(int argc, char *argv[])
     bool download;
     bool verbose;
     bool cpuErase;
+    bool showConfig;
+    bool showDevices;
     bool blankCheck = true;
 
     std::cout << "--== PICMEUP version 0.1a ==--\n\n";
@@ -250,6 +245,8 @@ int main(int argc, char *argv[])
             ("d,download","Download program", cxxopts::value<bool>(download)->default_value("false"))
             ("e,erase","Erase before programming", cxxopts::value<bool>(cpuErase)->default_value("true"))
             ("u,upload","Upload program", cxxopts::value<bool>(upload)->default_value("false"))
+            ("showconfig","Print the configuration bits", cxxopts::value<bool>(showConfig)->default_value("false"))
+            ("showdevices","Print supported devices", cxxopts::value<bool>(showDevices)->default_value("false"))
             ("h, help", "Print help");
 
         auto result = options.parse(argc, argv);
@@ -279,12 +276,17 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-#if 0
-    if (verbose)
+    if (showDevices)
     {
-        std::cout << "Read " << deviceInfo.size() << " devices from info file\n";
+        std::cout << "Supported devices:\n";
+        for(auto const device : deviceInfo)
+        {
+            if (device.deviceFamily == "CF_P16F_A")
+            {
+                std::cout << "  " << device.deviceName << "\n";
+            }
+        }
     }
-#endif
 
     // find the target device in the device list
     targetName = Utils::toLower(targetName);
@@ -409,6 +411,7 @@ int main(int argc, char *argv[])
         std::cout << "Programming flash..\n";
         pgm->resetPointer();
 
+        size_t outChars = 0;
         for(size_t address=0; address < targetDeviceInfo.flashMemSize; address += targetDeviceInfo.flashPageSize)
         {   
             std::vector<uint8_t> memChunk(flashMem.begin() + address*2, flashMem.begin() + (address+targetDeviceInfo.flashPageSize)*2);
@@ -422,7 +425,14 @@ int main(int argc, char *argv[])
             {
                 pgm->writePage(memChunk);
                 std::cout << "#" << std::flush;
-            }            
+            }
+            outChars++;
+
+            if (outChars >= 80)
+            {
+                std::cout << "\n";
+                outChars = 0;
+            }
         }
 
         std::cout << "\nProgramming config..\n";
@@ -464,6 +474,28 @@ int main(int argc, char *argv[])
         std::cout << "Verify ok!\n";
     }    
     
+    // FIXME: this should probably be moved to the device-specific PGM class
+    if (showConfig)
+    {
+        std::cout << "Configuration words:\n";
+        std::cout << "  ";
+        for(size_t i=0; i<targetDeviceInfo.configSize; i++)
+        {
+            auto word = pgm->getConfigWord(0x7 + i);    // 0x7 is PIC16A config bits offset
+            if (word)
+            {
+                std::cout << " 0x" << Utils::toHex(word.value());
+            }
+            else
+            {
+                std::cout << "Error reading configuration word!\n";
+                pgm->exitProgMode();
+                return EXIT_FAILURE;
+            }
+        }
+        std::cout << "\n";
+    }
+
     pgm->exitProgMode();
 
     std::cout << "Done.\n";
