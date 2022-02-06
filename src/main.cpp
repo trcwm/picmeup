@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <streambuf>
 
 #include "utils.h"
 #include "serial.h"
@@ -11,6 +12,8 @@
 #include "contrib/cxxopts.hpp"
 #include "hexreader.h"
 
+extern "C" char g_devices[];
+extern "C" size_t g_devices_size;
 struct DeviceInfo
 {
     std::string deviceName;
@@ -57,7 +60,6 @@ bool isEmptyMem(const std::vector<uint8_t> &mem)
     return isEmptyMem(mem, 0, len);
 }
 
-
 void showTargetDeviceInfo(const DeviceInfo &info)
 {
     std::cout << "Target            : " << info.deviceName << "\n";
@@ -68,10 +70,21 @@ void showTargetDeviceInfo(const DeviceInfo &info)
     std::cout << "  Device Family   : " << info.deviceFamily << "\n";
 }
 
-std::vector<DeviceInfo> readDeviceInfo(const std::string &filename)
+struct MemoryStream : std::streambuf
+{
+    MemoryStream(char *begin, char *end)
+    {
+        this->setg(begin, begin, end);
+    }
+};
+
+std::vector<DeviceInfo> readDeviceInfo()
 {
     std::vector<DeviceInfo> info;
-    std::ifstream deviceFile(filename);
+    //std::ifstream deviceFile(filename);
+
+    MemoryStream memstream(g_devices, g_devices + g_devices_size);
+    std::istream deviceFile(&memstream);
 
     struct FamilyInfo
     {
@@ -95,11 +108,11 @@ std::vector<DeviceInfo> readDeviceInfo(const std::string &filename)
         {"CF_P18F_Q", 12}}
     };
 
-    if (!deviceFile.is_open())
-    {
-        std::cerr << "Cannot open device file: " << filename << "\n";
-        return info;
-    }
+    //if (!deviceFile.is_good())
+    //{
+    //    std::cerr << "Cannot open device file: " << filename << "\n";
+    //    return info;
+    //}
 
     size_t lineNum = 0;
     while(!deviceFile.eof())
@@ -270,7 +283,8 @@ int main(int argc, char *argv[])
     }
 
     // read the device file
-    auto deviceInfo = readDeviceInfo("devices.dat");
+    //auto deviceInfo = readDeviceInfo("devices.dat");
+    auto deviceInfo = readDeviceInfo();
     if (deviceInfo.empty())
     {
         return EXIT_FAILURE;
