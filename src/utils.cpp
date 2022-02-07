@@ -1,5 +1,6 @@
 #include <sstream>
 #include <algorithm>
+#include <iostream>
 #include "utils.h"
 
 bool Utils::isDigit(char c)
@@ -111,4 +112,39 @@ std::string Utils::toLower(const std::string &str)
     );
 
     return result;
+}
+
+bool Utils::isEmptyMem(const std::vector<uint8_t> &mem, size_t start, size_t len)
+{
+    if ((len & 1) != 0)
+    {
+        std::cerr << "Error: isEmptyMem called with odd number of bytes\n";
+        return false;
+    }
+
+    while(len > 0)
+    {
+        auto low = static_cast<uint16_t>(mem.at(start));
+        auto hi  = static_cast<uint16_t>(mem.at(start+1));
+
+        //FIXME: for PIC16, the program word is 14 bits
+        //       so we need to check against 0x3FFF
+        //       however, for other parts it might be wider..
+
+        auto word = low | (hi<<8);
+        if (word != 0x3FFF)
+        {
+            return false;
+        }
+
+        start += 2;
+        len-=2;
+    }
+    return true;
+}
+
+bool Utils::isEmptyMem(const std::vector<uint8_t> &mem)
+{
+    auto len = mem.size();
+    return isEmptyMem(mem, 0, len);
 }

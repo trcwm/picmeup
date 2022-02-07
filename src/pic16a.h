@@ -7,19 +7,33 @@ public:
     PIC16A(std::shared_ptr<Serial> serial) : IDeviceProgrammer(serial) {}
 
     void massErase() override;
-
-    void resetPointer() override;
-    void incPointer(uint8_t number) override;
     
-    bool                    writePage(const std::vector<uint8_t> &data) override;
-    std::vector<uint8_t>    readPage(uint8_t num) override;
     std::optional<uint16_t> readDeviceId() override;
 
-    std::optional<uint16_t> getConfigWord(uint32_t wordOffset) override;
-    
-    void loadConfig() override;
-    void writeConfig(const std::vector<uint8_t> &config) override;
+    /** Upload configuration bits */
+    bool uploadConfig(const DeviceInfo &info, const std::vector<uint8_t> &config) override;
+
+    /** Download configuration bits */
+    std::vector<uint8_t> downloadConfig(const DeviceInfo &info) override;
+
+    /** Upload to flash */
+    bool uploadFlash(const DeviceInfo &info, const std::vector<uint8_t> &memory) override;
+
+    /** Download from flash */
+    std::vector<uint8_t> downloadFlash(const DeviceInfo &info) override;
+
+    /** check if the device is blank */
+    bool isDeviceBlank(const DeviceInfo &info) override;
 
     void enterProgMode() override;
     void exitProgMode() override;
+
+protected:
+    void resetPointer();
+    void incPointer(uint8_t number);
+
+    bool                    writePage(const std::vector<uint8_t> &data);
+    std::vector<uint8_t>    readPage(uint8_t num);
+    
+    void loadConfig();
 };

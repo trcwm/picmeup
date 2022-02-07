@@ -1,12 +1,12 @@
 #include <iostream>
 #include "pic16b.h"
 
-void PIC16B::writeConfig(const std::vector<uint8_t> &config)
+bool PIC16B::uploadConfig(const DeviceInfo &info, const std::vector<uint8_t> &config)
 {
     if (config.size() != 6)
     {
         std::cerr << "Error: writeConfig requires 6 bytes\n";
-        return;
+        return false;
     }
 
     resetPointer();
@@ -27,4 +27,6 @@ void PIC16B::writeConfig(const std::vector<uint8_t> &config)
     writePage(word1); // slow write
     writePage(word2); // slow write
     writePage(word3); // slow write
+
+    return true;
 }

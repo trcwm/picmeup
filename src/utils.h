@@ -14,4 +14,7 @@ namespace Utils
     std::optional<int32_t> intStrToint32(const std::string &str);
     std::optional<uint32_t> hexStrToUint32(const std::string &str);
     std::vector<std::string> tokenize(const std::string &str, const char delim);
+
+    bool isEmptyMem(const std::vector<uint8_t> &mem, size_t start, size_t len);
+    bool isEmptyMem(const std::vector<uint8_t> &mem);
 };

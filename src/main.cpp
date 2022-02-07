@@ -14,51 +14,7 @@
 
 extern "C" char g_devices[];
 extern "C" size_t g_devices_size;
-struct DeviceInfo
-{
-    std::string deviceName;
-    uint32_t    flashMemSize;   ///< in words
-    uint32_t    flashPageSize;  ///< in words
-    uint32_t    configSize;     ///< in words
-    uint32_t    deviceId;
-    uint32_t    deviceIdMask;
-    std::string deviceFamily;
-};
 
-bool isEmptyMem(const std::vector<uint8_t> &mem, size_t start, size_t len)
-{
-    if ((len & 1) != 0)
-    {
-        std::cerr << "Error: isEmptyMem called with odd number of bytes\n";
-        return false;
-    }
-
-    while(len > 0)
-    {
-        auto low = static_cast<uint16_t>(mem.at(start));
-        auto hi  = static_cast<uint16_t>(mem.at(start+1));
-
-        //FIXME: for PIC16, the program word is 14 bits
-        //       so we need to check against 0x3FFF
-        //       however, for other parts it might be wider..
-
-        auto word = low | (hi<<8);
-        if (word != 0x3FFF)
-        {
-            return false;
-        }
-
-        start += 2;
-        len-=2;
-    }
-    return true;
-}
-
-bool isEmptyMem(const std::vector<uint8_t> &mem)
-{
-    auto len = mem.size();
-    return isEmptyMem(mem, 0, len);
-}
 
 void showTargetDeviceInfo(const DeviceInfo &info)
 {
@@ -347,7 +303,6 @@ int main(int argc, char *argv[])
     // FIXME: use factory to create the correct programmer
     // for the device family
     auto pgm = ProgrammerFactory::create(targetDeviceInfo.deviceFamily, serial);
-
     if (!pgm)
     {
         std::cerr << "Device family " << targetDeviceInfo.deviceFamily << " is not supported\n";
@@ -393,29 +348,16 @@ int main(int argc, char *argv[])
     if (blankCheck)
     {
         std::cout << "Blank check\n";
-        pgm->resetPointer();        
-        for(size_t address=0; address < targetDeviceInfo.flashMemSize; address += targetDeviceInfo.flashPageSize)
+        isBlank = pgm->isDeviceBlank(targetDeviceInfo);
+        if (isBlank)
         {
-            auto page = pgm->readPage(targetDeviceInfo.flashPageSize);
-            if (page.size() == 0)
-            {
-                std::cout << "Could not read page\n";
-                pgm->exitProgMode();
-                return EXIT_FAILURE;
-            }
-            if (!isEmptyMem(page))
-            {
-                std::cout << "### Warning: uC is not blank! ###\n";
-                isBlank = false;
-                break;
-            }
+            std::cout << "Device is blank\n";
         }
     }
 
-    if (cpuErase & !isBlank)
+    if (cpuErase && !isBlank)
     {
         std::cout << "Erasing flash memory\n";
-        pgm->resetPointer();
         pgm->massErase();
         sleep(1);
     }
@@ -423,89 +365,53 @@ int main(int argc, char *argv[])
     if (upload)
     {
         std::cout << "Programming flash..\n";
-        pgm->resetPointer();
-
-        size_t outChars = 0;
-        for(size_t address=0; address < targetDeviceInfo.flashMemSize; address += targetDeviceInfo.flashPageSize)
-        {   
-            std::vector<uint8_t> memChunk(flashMem.begin() + address*2, flashMem.begin() + (address+targetDeviceInfo.flashPageSize)*2);
-            
-            if (isEmptyMem(memChunk))
-            {
-                pgm->incPointer(targetDeviceInfo.flashPageSize);
-                std::cout << "." << std::flush;
-            }
-            else
-            {
-                pgm->writePage(memChunk);
-                std::cout << "#" << std::flush;
-            }
-            outChars++;
-
-            if (outChars >= 80)
-            {
-                std::cout << "\n";
-                outChars = 0;
-            }
-        }
-
-        std::cout << "\nProgramming config..\n";
-        pgm->writeConfig(configMem);
+        pgm->uploadFlash(targetDeviceInfo, flashMem);
+        pgm->uploadConfig(targetDeviceInfo, configMem);
+        std::cout << "\n";
     }
 
     if (verify)
-    {
-        std::cout << "Verifying..\n";
-        pgm->resetPointer();
-        for(size_t address=0; address < targetDeviceInfo.flashMemSize; address += targetDeviceInfo.flashPageSize)
+    {        
+        std::cout << "Verifying.. ";
+        auto flashContents = pgm->downloadFlash(targetDeviceInfo);
+
+        for(size_t address = 0; address < targetDeviceInfo.flashMemSize*2; address+=2)
         {
-            auto page = pgm->readPage(targetDeviceInfo.flashPageSize);
-            size_t offset = 0;
-            for(auto byte : page)
+            bool check1 = flashContents.at(address) == flashMem.at(address);
+            bool check2 = flashContents.at(address+1) == flashMem.at(address+1);
+            if ((check1 && check2) == false)
             {
-                if (byte != flashMem.at(address*2 + offset))
-                {
-                    std::cout << "Verification failure at byte address 0x" << Utils::toHex(address*2 + offset) << "\n";
-
-                    // dump the page
-                    size_t o = 0;
-                    for(auto byte2 : page)
-                    {
-                        if (byte2 != flashMem.at(address*2 + o))
-                        {
-                            std::cout << "  " << Utils::toHex(address*2 + o) << "  have " << Utils::toHex(byte2,2);
-                            std::cout << " - want " << Utils::toHex(address*2+o,2) << "\n";
-                        }                        
-                        o++;
-                    }
-
-                    pgm->exitProgMode();
-                    return EXIT_FAILURE;
-                }
-                offset++;
+                std::cerr << "Flash memory mismatch at address " << (address/2) << "\n";
+                std::cerr << "  wanted: " << Utils::toHex(flashMem.at(address+1),2);
+                std::cerr << Utils::toHex(flashMem.at(address),2) << "  but got: ";
+                std::cerr << Utils::toHex(flashContents.at(address+1),2);
+                std::cerr << Utils::toHex(flashContents.at(address),2) << "\n";
+                pgm->exitProgMode();
+                return EXIT_FAILURE;
             }
         }
-        std::cout << "Verify ok!\n";
+        std::cout << "Ok!\n";
     }    
-    
-    // FIXME: this should probably be moved to the device-specific PGM class
+
     if (showConfig)
     {
         std::cout << "Configuration words:\n";
         std::cout << "  ";
-        for(size_t i=0; i<targetDeviceInfo.configSize; i++)
+
+        auto configBytes = pgm->downloadConfig(targetDeviceInfo);
+
+        if (configBytes.empty())
         {
-            auto word = pgm->getConfigWord(0x7 + i);    // 0x7 is PIC16A config bits offset
-            if (word)
-            {
-                std::cout << " 0x" << Utils::toHex(word.value());
-            }
-            else
-            {
-                std::cout << "Error reading configuration word!\n";
-                pgm->exitProgMode();
-                return EXIT_FAILURE;
-            }
+            std::cerr << "Could not read configuration bytes!\n";
+            pgm->exitProgMode();
+            return EXIT_FAILURE;
+        }
+
+        for(size_t address=0; address < configBytes.size(); address += 2)
+        {
+            const auto byte1 = configBytes.at(address+1);
+            const auto byte2 = configBytes.at(address);
+            std::cout << " 0x" << Utils::toHex(byte1,2) << Utils::toHex(byte2,2) << " ";
         }
         std::cout << "\n";
     }

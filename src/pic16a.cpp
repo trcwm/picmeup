@@ -1,6 +1,7 @@
 #include <iostream>
 #include <algorithm>
 #include "pic16a.h"
+#include "utils.h"
 #include "pgmops.h"
 
 std::ostream& operator<<(std::ostream &os, const PGMOperation &op)
@@ -85,6 +86,7 @@ void PIC16A::incPointer(uint8_t number)
 
 void PIC16A::massErase()
 {
+    resetPointer();
     writeCommand(m_serial, PGMOperation::MassErasePIC16A, m_verbose);
 }
 
@@ -155,35 +157,26 @@ std::vector<uint8_t> PIC16A::readPage(uint8_t numberOfWords)
 
 std::optional<uint16_t> PIC16A::readDeviceId()
 {
-    return getConfigWord(6);
-}
-
-
-std::optional<uint16_t> PIC16A::getConfigWord(uint32_t wordOffset)
-{
     resetPointer();
     loadConfig();
-    incPointer(wordOffset);
-    auto page = readPage(1);
+    incPointer(6);
+    auto bytes = readPage(1);
 
-    if (page.size() != 2)
+    if (bytes.size() != 2)
     {
         return std::nullopt;
     }
 
-    uint16_t byteHi = page.at(1);
-    uint16_t byteLo = page.at(0);
-
-    auto word = (byteLo + (byteHi << 8)); 
-    return word;    
+    uint16_t result = bytes.at(0) | (static_cast<uint16_t>(bytes.at(1)) << 8);
+    return result;
 }
 
-void PIC16A::writeConfig(const std::vector<uint8_t> &config)
+bool PIC16A::uploadConfig(const DeviceInfo &info, const std::vector<uint8_t> &config)
 {
     if (config.size() != 4)
     {
         std::cerr << "Error: writeConfig requires 4 bytes\n";
-        return;
+        return false;
     }
 
     resetPointer();
@@ -200,6 +193,15 @@ void PIC16A::writeConfig(const std::vector<uint8_t> &config)
 
     writePage(word1); // slow write
     writePage(word2); // slow write
+
+    return true;
+}
+
+std::vector<uint8_t> PIC16A::downloadConfig(const DeviceInfo &info)
+{
+    loadConfig();
+    incPointer(0x07);
+    return readPage(info.configSize);
 }
 
 void PIC16A::enterProgMode() 
@@ -210,4 +212,78 @@ void PIC16A::enterProgMode()
 void PIC16A::exitProgMode()
 {
     writeCommand(m_serial, PGMOperation::ExitProgMode, m_verbose);
+}
+
+bool PIC16A::uploadFlash(const DeviceInfo &info, const std::vector<uint8_t> &memory)
+{
+    resetPointer();
+
+    size_t outChars = 0;
+    for(size_t address=0; address < info.flashMemSize; address += info.flashPageSize)
+    {   
+        std::vector<uint8_t> memChunk(memory.begin() + address*2, memory.begin() + (address+info.flashPageSize)*2);
+        
+        if (Utils::isEmptyMem(memChunk))
+        {
+            incPointer(info.flashPageSize);
+            std::cout << "." << std::flush;
+        }
+        else
+        {
+            if (!writePage(memChunk))
+            {
+                return false;
+            }
+            
+            std::cout << "#" << std::flush;
+        }
+        outChars++;
+
+        if (outChars >= 80)
+        {
+            std::cout << "\n";
+            outChars = 0;
+        }
+    }
+    return true;
+}
+
+/** Download from flash */
+std::vector<uint8_t> PIC16A::downloadFlash(const DeviceInfo &info)
+{
+    std::vector<uint8_t> flashContents;
+    resetPointer();
+    for(size_t address=0; address < info.flashMemSize; address += info.flashPageSize)
+    {
+        auto page = readPage(info.flashPageSize);
+        if (page.empty())
+        {
+            return std::vector<uint8_t>();  // error
+        }
+
+        flashContents.insert(flashContents.end(), page.begin(), page.end());
+    }
+
+    return flashContents;
+}
+
+
+bool PIC16A::isDeviceBlank(const DeviceInfo &info)
+{
+    resetPointer();
+    for(size_t address=0; address < info.flashMemSize; address += info.flashPageSize)
+    {
+        auto page = readPage(info.flashPageSize);
+        if (page.size() == 0)
+        {
+            std::cout << "Could not read page\n";
+            return false;
+        }
+        if (!Utils::isEmptyMem(page))
+        {
+            std::cout << "### Warning: uC is not blank! ###\n";
+            return false;
+        }
+    }    
+    return true;
 }
