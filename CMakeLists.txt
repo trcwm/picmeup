@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright N.A. Moseley 2022
+
 cmake_minimum_required(VERSION 3.20)
 project(picmeup LANGUAGES CXX ASM VERSION 0.1)
 
@@ -17,16 +20,15 @@ add_executable(picmeup
     src/pgmfactory.cpp
     src/pic16a.cpp
     src/pic16b.cpp
+    src/pic16pgm_a.cpp
     src/serial.cpp
     src/main.cpp
 )
 
-add_custom_target(
-    generate-devices-file
+add_custom_command(OUTPUT ${PROJECT_SOURCE_DIR}/src/devices.S
+    COMMAND touch ${PROJECT_SOURCE_DIR}/src/devices.S
     DEPENDS ${PROJECT_SOURCE_DIR}/src/devices.dat
-    )
-
-add_dependencies(picmeup generate-devices-file)
+)
 
 install(TARGETS picmeup 
     RUNTIME 

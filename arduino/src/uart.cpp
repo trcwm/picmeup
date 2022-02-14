@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright N.A. Moseley 2022
+
 #define F_CPU 16000000
 #define BAUD 57600
 

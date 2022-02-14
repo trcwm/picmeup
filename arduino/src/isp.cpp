@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright N.A. Moseley 2022
+
 #define F_CPU 16000000
 
 #include <avr/io.h>
@@ -10,6 +13,7 @@
 #define ISP_DDR   DDRC
 #define ISP_PIN   PINC
 #define ISP_MCLR  3
+#define ISP_PGM   2
 #define ISP_DAT   1
 #define ISP_CLK   0
 
@@ -29,6 +33,12 @@
 #define  ISP_CLK_D_I  ISP_DDR &= ~(1<<ISP_CLK);
 #define  ISP_CLK_D_0  ISP_DDR |= (1<<ISP_CLK);
 
+#define  ISP_PGM_1    ISP_PORT |= (1<<ISP_PGM);
+#define  ISP_PGM_0    ISP_PORT &= ~(1<<ISP_PGM);
+#define  ISP_PGM_D_I  ISP_DDR &= ~(1<<ISP_PGM);
+#define  ISP_PGM_D_0  ISP_DDR |= (1<<ISP_PGM);
+
+
 #define  ISP_CLK_DELAY  4
 
 void ISP::init()
@@ -36,6 +46,8 @@ void ISP::init()
     ISP_CLK_D_0
     ISP_DAT_D_0
     ISP_DAT_0
+    ISP_PGM_D_0
+    ISP_PGM_0
     ISP_CLK_0
     ISP_MCLR_D_0
     ISP_MCLR_1    
@@ -139,7 +151,7 @@ void ISP::writePgm(uint16_t *data, uint8_t n)
     incrementPointer();
 }
 
-void ISP::sendConfig(uint16_t data)
+void ISP::loadConfig(uint16_t data)
 {
     send(0x00, 6);      // Load Configuration 
     send(data, 16);
@@ -147,7 +159,7 @@ void ISP::sendConfig(uint16_t data)
 
 void ISP::massErase()
 {
-    sendConfig(0);
+    loadConfig(0);
     send(0x09, 6);      // internally timed bulk erase
     _delay_ms(10);
 }
@@ -181,4 +193,26 @@ void ISP::exitProgMode()
     ISP_MCLR_0
     _delay_ms(30);
     ISP_MCLR_1
+}
+
+void ISP::enterProgModeWithPGMPin()
+{
+    // for older devices such as PIC16F87X
+    ISP_MCLR_0
+    _delay_us(300);      // spec is min. 5us for PIC16F87X    
+    ISP_PGM_1
+    _delay_us(1);       // spec is min. 100ns for PIC16F87X
+    ISP_MCLR_1
+    _delay_us(300);      // spec is min. 5us for PIC16F87X
+}
+
+void ISP::exitProgModeWithPGMPin()
+{
+    // for older devices such as PIC16F87X
+    ISP_PGM_0
+    ISP_MCLR_1
+    _delay_ms(30);
+    ISP_MCLR_0
+    _delay_ms(30);
+    ISP_MCLR_1    
 }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright N.A. Moseley 2022
+
 #include <iostream>
 #include <fstream>
 #include "hexreader.h"
@@ -9,7 +12,7 @@
 #define IHEX_EXTLIN 4
 #define IHEX_STARTLINADD 5
 
-void HexReader::read(const std::string &filename, 
+bool HexReader::read(const std::string &filename, 
     std::vector<uint8_t> &flash,
     std::vector<uint8_t> &config)
 {
@@ -17,7 +20,8 @@ void HexReader::read(const std::string &filename,
     std::ifstream hexfile(filename);
     if (!hexfile.is_open())
     {
-        return;
+        std::cerr << "Cannot open HEX file\n";
+        return false;
     }
 
     uint32_t addressOffset = 0;
@@ -38,7 +42,7 @@ void HexReader::read(const std::string &filename,
         if ((!lineLengthOpt) || (!lineAddressOpt) || (!lineTypeOpt))
         {
             std::cerr << "Error reading HEX file\n";
-            return;
+            return false;
         }
 
         auto lineLength     = lineLengthOpt.value();
@@ -62,7 +66,7 @@ void HexReader::read(const std::string &filename,
                 if (!byteOpt)
                 {
                     std::cerr << "Error reading IHEX data record\n";
-                    return;
+                    return false;
                 }
                 
                 uint32_t byte = byteOpt.value();
@@ -74,7 +78,16 @@ void HexReader::read(const std::string &filename,
                 else if (addressOffset == 0x01)
                 {
                     // Special code to get the configuration bits for PIC16:
-                    config.at(lineAddress + i - 0xE) = byte;
+                    auto offset = lineAddress + i - 0xE;
+                    if (offset < config.size())
+                    {
+                        config.at(offset) = byte;
+                    }
+                    else
+                    {
+                        std::cerr << "This HEX file contains more configuration bits than the target accepts!";
+                        return false;
+                    }
                 }
 
                 if constexpr (dump)
@@ -90,7 +103,7 @@ void HexReader::read(const std::string &filename,
             if (!addrOpt)
             {
                 std::cerr << "Error reading IHEX extended linear record\n";
-                return;
+                return false;
             }   
 
             addressOffset = addrOpt.value();
@@ -108,4 +121,5 @@ void HexReader::read(const std::string &filename,
     {
         printf("\nok\n");
     }    
+    return true;
 }

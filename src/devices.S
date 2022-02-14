@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
 .section .rodata
 .global g_devices
 .global g_devices_size

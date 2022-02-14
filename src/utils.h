@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright N.A. Moseley 2022
+
 #pragma once
 #include <optional>
 #include <string>

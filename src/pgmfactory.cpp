@@ -1,7 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 #include "pgmfactory.h"
 #include "pic16a.h"
 #include "pic16b.h"
-#include "pic16c.h"
+#include "pic16pgm_a.h"
+//#include "pic16c.h"
 
 std::shared_ptr<IDeviceProgrammer> ProgrammerFactory::create(const std::string &deviceFamily, std::shared_ptr<Serial> serial)
 {
@@ -13,7 +16,10 @@ std::shared_ptr<IDeviceProgrammer> ProgrammerFactory::create(const std::string &
     {
         return std::make_shared<PIC16B>(serial);
     }
-
+    else if (deviceFamily == "CF_P16F_PGM_A")
+    {
+        return std::make_shared<PIC16PGM_A>(serial);
+    }
     // Note: CF_P16F_C uses a very different command set!
     //       it needs support from the Arduino code.
     // see: 40001753B.pdf

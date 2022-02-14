@@ -1,3 +1,4 @@
+// 
 #include <avr/io.h>
 #include "msghandler.h"
 #include "../../src/pgmops.h"
@@ -89,7 +90,7 @@ void MessageHandler::tick()
         m_uart.write(0x83);
         break;
     case PGMOperation::LoadConfig:
-        m_isp.sendConfig(0);
+        m_isp.loadConfig(0);
         m_uart.write(0x84);
         break;
     case PGMOperation::PointerIncrement:
@@ -100,7 +101,6 @@ void MessageHandler::tick()
                 // error!
                 return;
             }
-
             for(uint8_t i=0; i<m_buffer[2]; i++)
             {
                 m_isp.incrementPointer();
@@ -159,6 +159,14 @@ void MessageHandler::tick()
             m_isp.writePgm(m_isp.m_flashBuffer, words);
         }
         m_uart.write(0x88);
+        break;
+    case PGMOperation::EnterProgModeWithPGM:
+        m_isp.enterProgModeWithPGMPin();
+        m_uart.write(0x90);
+        break;
+    case PGMOperation::ExitProgModeWithPGM:
+        m_isp.exitProgModeWithPGMPin();
+        m_uart.write(0x91);
         break;
     default:
         m_uart.write(0x00);

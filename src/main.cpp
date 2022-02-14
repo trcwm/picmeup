@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright N.A. Moseley 2022
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -21,7 +24,7 @@ void showTargetDeviceInfo(const DeviceInfo &info)
     std::cout << "Target            : " << info.deviceName << "\n";
     std::cout << "  Flash mem size  : " << info.flashMemSize << " words\n";
     std::cout << "  Flash page size : " << info.flashPageSize << " words\n";
-    std::cout << "  Device ID       : " << std::hex << std::uppercase << info.deviceId;
+    std::cout << "  Device ID       : " << Utils::toHex(info.deviceId);
     std::cout << std::dec << std::nouppercase << "\n";
     std::cout << "  Device Family   : " << info.deviceFamily << "\n";
 }
@@ -48,7 +51,7 @@ std::vector<DeviceInfo> readDeviceInfo()
         uint32_t    configSize; // in words
     };
 
-    const std::array<FamilyInfo, 12> validFamilies = 
+    const std::array<FamilyInfo, 13> validFamilies = 
     {
         {{"CF_P16F_A", 2},
         {"CF_P16F_B",  3},
@@ -61,7 +64,8 @@ std::vector<DeviceInfo> readDeviceInfo()
         {"CF_P18F_E", 16},
         {"CF_P18F_F", 12},
         {"CF_P18F_G", 10 /* basically CF_P18F_F */},
-        {"CF_P18F_Q", 12}}
+        {"CF_P18F_Q", 12},
+        {"CF_P16F_PGM_A", 1}}
     };
 
     //if (!deviceFile.is_good())
@@ -79,7 +83,7 @@ std::vector<DeviceInfo> readDeviceInfo()
         lineNum++;
 
         // skip empty lines and comments
-        if (line.empty() || (line.at(0) == '#'))
+        if ((line.size() <= 2) || (line.at(0) == '#'))
         {
             continue;
         }
@@ -166,10 +170,11 @@ bool checkDevice(std::shared_ptr<IDeviceProgrammer> iface, const DeviceInfo &tar
         std::cerr << "Could not read device ID!\n";
         return false;
     }
-
+ 
     const uint32_t IDcheck = idOpt.value() & target.deviceIdMask;
 
     bool IDok = (IDcheck == target.deviceId);
+    std::cout << "  device ID = " << Utils::toHex(IDcheck) << "\n";
     if (!IDok)
     {
         std::cerr << "Device ID mismatch! Wanted " << Utils::toHex(target.deviceId) << " but got " << Utils::toHex(IDcheck) << "\n";
@@ -341,7 +346,13 @@ int main(int argc, char *argv[])
             std::cout << "Reading IHEX file " << uploadHexfileName << "\n";
         }
 
-        HexReader::read(uploadHexfileName, flashMem, configMem);
+        if (!HexReader::read(uploadHexfileName, flashMem, configMem))
+        {
+            std::cerr << "Error reading HEX file\n";
+            pgm->exitProgMode();
+            return EXIT_FAILURE;
+        }
+        // TODO: check if config bits are available
     }
 
     bool isBlank = true;

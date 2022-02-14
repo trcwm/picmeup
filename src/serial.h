@@ -1,5 +1,7 @@
-#pragma once
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright N.A. Moseley 2022
 
+#pragma once
 
 #include <fcntl.h> // Contains file controls like O_RDWR
 #include <errno.h> // Error integer and strerror() function

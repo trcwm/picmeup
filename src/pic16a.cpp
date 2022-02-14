@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright N.A. Moseley 2022
+
 #include <iostream>
 #include <algorithm>
 #include "pic16a.h"
@@ -36,11 +39,11 @@ std::ostream& operator<<(std::ostream &os, const PGMOperation &op)
     return os;
 }
 
-void writeCommand(std::shared_ptr<Serial> &serial, PGMOperation op, bool verbose)
+void PIC16A::writeCommand(PGMOperation op, bool verbose)
 {
-    serial->write(op);
-    serial->write(0x00);  // length
-    auto resultOpt = serial->read();
+    m_serial->write(op);
+    m_serial->write(0x00);  // length
+    auto resultOpt = m_serial->read();
     if (!resultOpt)
     {
         std::cerr << "No response to cmd " << op << "\n";
@@ -62,7 +65,7 @@ void writeCommand(std::shared_ptr<Serial> &serial, PGMOperation op, bool verbose
 
 void PIC16A::resetPointer()
 {
-    writeCommand(m_serial, PGMOperation::ResetPointer, m_verbose);
+    writeCommand(PGMOperation::ResetPointer, m_verbose);
 }
 
 void PIC16A::incPointer(uint8_t number)
@@ -87,12 +90,12 @@ void PIC16A::incPointer(uint8_t number)
 void PIC16A::massErase()
 {
     resetPointer();
-    writeCommand(m_serial, PGMOperation::MassErasePIC16A, m_verbose);
+    writeCommand(PGMOperation::MassErasePIC16A, m_verbose);
 }
 
 void PIC16A::loadConfig()
 {
-    writeCommand(m_serial, PGMOperation::LoadConfig, m_verbose);
+    writeCommand(PGMOperation::LoadConfig, m_verbose);
 }
 
 bool PIC16A::writePage(const std::vector<uint8_t> &data)
@@ -157,7 +160,7 @@ std::vector<uint8_t> PIC16A::readPage(uint8_t numberOfWords)
 
 std::optional<uint16_t> PIC16A::readDeviceId()
 {
-    resetPointer();
+    //resetPointer();
     loadConfig();
     incPointer(6);
     auto bytes = readPage(1);
@@ -206,12 +209,12 @@ std::vector<uint8_t> PIC16A::downloadConfig(const DeviceInfo &info)
 
 void PIC16A::enterProgMode() 
 {
-    writeCommand(m_serial, PGMOperation::EnterProgMode, m_verbose);
+    writeCommand(PGMOperation::EnterProgMode, m_verbose);
 }
 
 void PIC16A::exitProgMode()
 {
-    writeCommand(m_serial, PGMOperation::ExitProgMode, m_verbose);
+    writeCommand(PGMOperation::ExitProgMode, m_verbose);
 }
 
 bool PIC16A::uploadFlash(const DeviceInfo &info, const std::vector<uint8_t> &memory)
@@ -234,7 +237,7 @@ bool PIC16A::uploadFlash(const DeviceInfo &info, const std::vector<uint8_t> &mem
             {
                 return false;
             }
-            
+
             std::cout << "#" << std::flush;
         }
         outChars++;

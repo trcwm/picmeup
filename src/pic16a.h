@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright N.A. Moseley 2022
+
 #pragma once
 #include "serial.h"
 #include "devicepgminterface.h"
@@ -36,4 +39,6 @@ protected:
     std::vector<uint8_t>    readPage(uint8_t num);
     
     void loadConfig();
+
+    void writeCommand(PGMOperation op, bool verbose);
 };

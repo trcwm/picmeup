@@ -1,9 +1,22 @@
-# PP3 device database for version 0.99
-# 
+# Based on PP3 device database
+# Copyright (c) 2015 Jaromir Sukuba https://github.com/jaromir-sukuba/a-p-prog
+# MIT License
+#
 # name   flash page  ID  mask family_type
 # flash size and page size in bytes 1 WORD = 2 BYTES
 # 
 # PIC16 family
+16f627a   2048   32 1111 FFE0 CF_P16F_PGM_A
+16f628a   4096   32 1111 FFE0 CF_P16F_PGM_A
+16f648a   8192   32 1111 FFE0 CF_P16F_PGM_A
+16f870    8192   32 1111 FFE0 CF_P16F_PGM_A
+16f871    8192   32 1111 FFE0 CF_P16F_PGM_A
+16f872    8192   32 1111 FFE0 CF_P16F_PGM_A
+16f873    8192   32 1111 FFE0 CF_P16F_PGM_A
+16f874    8192   32 0920 FFE0 CF_P16F_PGM_A
+16f876    16384  32 09E0 FFE0 CF_P16F_PGM_A
+16f877    16384  32 09A0 FFE0 CF_P16F_PGM_A
+#
 16f1503   4096   32 2CE0 FFE0 CF_P16F_A
 16lf1503  4096   32 2DA0 FFE0 CF_P16F_A
 16f1507   4096   32 2D00 FFE0 CF_P16F_A

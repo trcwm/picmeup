@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright N.A. Moseley 2022
+
 #pragma once
 
 #include <stdint.h>
@@ -20,11 +23,14 @@ public:
     void enterProgMode();
     void exitProgMode();
 
+    void enterProgModeWithPGMPin();
+    void exitProgModeWithPGMPin();
+
     void massErase(void);
     void resetPointer(void);
     void incrementPointer();
 
-    void sendConfig(uint16_t data);
+    void loadConfig(uint16_t data);
     void send_8_msb(unsigned char data);
 
     constexpr static uint16_t c_bufsize = 260;
