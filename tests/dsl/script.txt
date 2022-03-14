@@ -1,0 +1,96 @@
+# Hello, world!
+
+DEFINE MCLR = PIN 0 OUTPUT # This is a line comment
+DEFINE DAT  = PIN 1 BIDIR
+DEFINE CLK  = PIN 2 OUTPUT
+
+PROC SEND(data, n)
+    DAT = OUTPUT
+    
+    REP n
+        DAT = data[0]
+        data = SHR data
+        WAIT 10
+        CLK = 1
+        WAIT 1
+        CLK = 0
+    ENDREP
+
+    DAT = 0
+ENDPROC
+
+PROC READ16()
+    VAR out
+    out = 0
+    DAT = INPUT
+
+    REP 16
+        CLK = 1
+        WAIT 1
+        CLK = 0 
+        WAIT 1
+        out = SHR out
+        out[15] = DAT
+    ENDREP
+
+    RET out
+ENDPROC
+
+PROC READ8()
+    VAR out
+    out = 0
+    DAT = INPUT
+
+    REP 8
+        CLK = 1
+        WAIT 1
+        CLK = 0 
+        WAIT 1
+        out = SHR out
+        out[7] = DAT
+    ENDREP
+
+    RET out
+ENDPROC
+
+PROC READ14()
+    VAR out
+    out = READ16()
+    out[15] = 0
+    out = SHR out
+    RET out
+ENDPROC
+
+PROC LOAD_CONFIG(data)
+    SEND(0, 6)
+    SEND(data, 16)
+ENDPROC
+
+PROC MASS_ERASE()
+    LOAD_CONFIG(0)
+    SEND(9, 6)
+    WAIT 10
+ENDPROC
+
+PROC INC_POINTER()
+    SEND(6,6)
+ENDPROC
+
+PROC ENTER_PGM()
+    MCLR = 0
+    WAIT 1
+    SEND('P', 8)
+    SEND('H', 8)
+    SEND('C', 8)
+    SEND('M', 8)
+    SEND(0, 1)
+ENDPROC
+
+PROC EXIT_PGM()
+    MCLR = 1
+    WAIT 1
+    MCLR = 0
+    WAIT 0
+    MCLR = 1
+ENDPROC
+
