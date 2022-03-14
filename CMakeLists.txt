@@ -13,6 +13,8 @@ if(UNIX)
     include(Packing)
 endif(UNIX)
 
+add_subdirectory(tests/dsl)
+
 add_executable(picmeup 
     src/devices.S
     src/utils.cpp
