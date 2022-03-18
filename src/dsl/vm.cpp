@@ -18,10 +18,17 @@ uint16_t VM::Machine::pop()
     return m_stack[m_sp--];
 }
 
+uint16_t& VM::Machine::tos()
+{
+    return m_stack[m_sp];
+}
+
 void VM::Machine::execInstruction()
 {
     uint8_t  imm8;
+    uint8_t  bit8;
     uint16_t imm16;
+    uint16_t temp16;
     auto opcode = static_cast<Instruction>(m_code[m_ip++]);
 
     switch(opcode)
@@ -45,6 +52,9 @@ void VM::Machine::execInstruction()
     case Instruction::DEC:
         m_stack[m_sp]--;
         break;
+    case Instruction::INC:
+        m_stack[m_sp]++;
+        break;        
     case Instruction::JNZ:
         imm16 = getWord(m_ip);
         m_ip += 2;
@@ -65,8 +75,8 @@ void VM::Machine::execInstruction()
         break;
     case Instruction::WAIT:
         // not implemented on PC
-        imm16 = getWord(m_ip);
-        m_ip+=2;
+        m_ip++;
+        imm16 = pop();  // wait amount in ns
         break;
     case Instruction::SETOUTPUT:
         // not implemented on PC
@@ -76,16 +86,34 @@ void VM::Machine::execInstruction()
         // not implemented on PC
         imm8 = m_code[m_ip++];    // pin number
         break;
+    case Instruction::SETPIN:
+        // not implemented on PC
+        imm8 = m_code[m_ip++];    // pin number
+        // get TOS and set pin
+        //imm8 = m_code[m_ip++];    // pin state
+        pop();
+        break;
+    case Instruction::GETPIN:
+        // not implemented on PC
+        imm8 = m_code[m_ip++];    // pin number
+        push(0);
+        break;
     case Instruction::SETBIT:
-        // not implemented on PC
-        imm8 = m_code[m_ip++];    // bit number
-        imm8 = m_code[m_ip++];    // pin number
+        bit8 = m_code[m_ip++];    // get bit number
+        imm8 = m_code[m_ip++];    // bit state
+        if (imm8 == 0)
+        {
+            tos() &= ~(1 << bit8);
+        }
+        else
+        {
+            tos() |= (1 << bit8);
+        }
         break;
-    case Instruction::CLRBIT:
-        // not implemented on PC
-        imm8 = m_code[m_ip++];    // bit number
-        imm8 = m_code[m_ip++];    // pin number
-        break;
+    case Instruction::GETBIT:
+        bit8 = m_code[m_ip++];    // get bit number
+        tos() = (tos() >> bit8) & 0x01;
+        break;        
     case Instruction::CALL:
         imm16 = getWord(m_ip);  // call address
         m_ip+=2;
@@ -113,6 +141,9 @@ void VM::Machine::execInstruction()
     case Instruction::TX16:
         // not implemented on PC
         pop();
+        break;
+    case Instruction::SHR:
+        m_stack[m_sp] >>= 1;
         break;        
     }
 }

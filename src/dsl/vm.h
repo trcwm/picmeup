@@ -19,21 +19,25 @@ enum class Instruction : uint8_t
     LOAD,           /* load variable from BP offset n8 onto the stack */
     STORE,          /* store variable to BP offset n8 onto the stack */
     DEC,            /* decrement TOS */
+    INC,            /* increment TOS */
     JNZ,            /* check TOS and jump if not zero (doesn't pop) */
     POP,            /* pop TOS */
     POPN,           /* pop n8 words off the stack */    
     DUP,            /* duplicate the TOS */
-    WAIT,           /* wait n16 nanoseconds */
+    WAIT,           /* wait for TOS nanoseconds */
     SETOUTPUT,      /* set pin n8 to output */
     SETINPUT,       /* set pin n8 to input */
-    SETBIT,         /* set bit n8 of pin m8 */
-    CLRBIT,         /* clear bit n8 of pin m8 */
+    SETPIN,         /* set pin n8 to value on TOS */
+    GETPIN,         /* get bit n8 of pin */
+    SETBIT,         /* set bit n8 of TOS to value m8 */
+    GETBIT,         /* get bit n8 of TOS */
     CALL,           /* call function at address n16, sets BP to the first argument */
     RET,            /* return from function, restores BP */
     RX16,           /* receive 16 bits from UART */
     TX16,           /* transmit 16 bits to UART */
     RX8,            /* receive 8 bits from UART */
-    TX8             /* transmit 8 bits to UART */
+    TX8,            /* transmit 8 bits to UART */
+    SHR             /* right-shift the TOS */
 };
 
 class Machine
@@ -46,6 +50,7 @@ protected:
     uint16_t getWord(const uint16_t address) const;
     void push(uint16_t v);
     uint16_t pop();
+    uint16_t& tos();
 
     uint16_t                  m_ip;
     uint8_t                   m_sp;

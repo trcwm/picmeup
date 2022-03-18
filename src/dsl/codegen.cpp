@@ -1,5 +1,30 @@
 #include "codegen.h"
 
+void CodeGen::CodeGenVisitor::emit(VM::Instruction opcode)
+{
+    m_code.push_back(static_cast<uint8_t>(opcode));
+}
+
+void CodeGen::CodeGenVisitor::emit(VM::Instruction opcode, uint16_t value)
+{
+    m_code.push_back(static_cast<uint8_t>(opcode));
+    m_code.push_back(value & 0xFF);
+    m_code.push_back((value >> 8) & 0xFF);
+}
+
+void CodeGen::CodeGenVisitor::emit(VM::Instruction opcode, uint8_t value)
+{
+    m_code.push_back(static_cast<uint8_t>(opcode));
+    m_code.push_back(value);
+}
+
+void CodeGen::CodeGenVisitor::emit(VM::Instruction opcode, uint8_t v1, uint8_t v2)
+{
+    m_code.push_back(static_cast<uint8_t>(opcode));
+    m_code.push_back(static_cast<uint8_t>(v1));
+    m_code.push_back(static_cast<uint8_t>(v2));
+}
+
 void CodeGen::CodeGenVisitor::visit(const ASTNode *node) 
 {
     bool skipFirstChild = false;
@@ -50,8 +75,17 @@ void CodeGen::CodeGenVisitor::visit(const ASTNode *node)
             }
             else
             {
-                emit("SETDIR ", opt->m_integer);
-                emit(static_cast<int>(node->m_iotype));
+                switch(node->m_iotype)
+                {
+                case IOType::INPUT:
+                    emit(VM::Instruction::SETINPUT, static_cast<uint8_t>(opt.value().m_integer));
+                    break;
+                case IOType::OUTPUT:
+                    emit(VM::Instruction::SETOUTPUT, static_cast<uint8_t>(opt.value().m_integer));
+                    break;
+                default:
+                    std::cerr << "Unknown iotype\n";
+                }
             }
         }
         break;
@@ -70,30 +104,29 @@ void CodeGen::CodeGenVisitor::visit(const ASTNode *node)
                     comment(node->m_name);
                     comment("\n");
 
-                    emit("READPIN ");
-                    emit(opt.value().m_integer);
+                    emit(VM::Instruction::GETPIN, static_cast<uint8_t>(opt.value().m_integer));
+                    //emit("READPIN ");
+                    //emit(opt.value().m_integer);
                 }
                 else
                 {
                     comment("# VARIABLE ");
                     comment(node->m_name);
 
+                    emit(VM::Instruction::LOAD, static_cast<uint16_t>(opt.value().m_address));
+
+                    // check for bit access
                     if (node->m_integer >= 0)
                     {
                         comment("[");
                         comment(node->m_integer);
                         comment("]\n");
+                        
                         // get bit
-                        emit("GETBIT ", node->m_integer);
-                        emit(opt.value().m_address);
+                        emit(VM::Instruction::GETBIT, static_cast<uint8_t>(node->m_integer));
+                        //emit("GETBIT ", node->m_integer);
+                        //emit(opt.value().m_address);
                     }
-                    else
-                    {
-                        comment("\n");
-                        // regular 16-bit load
-                        emit("LOAD ");
-                        emit(opt.value().m_address);
-                    }                     
                 }
             }
         }
@@ -108,14 +141,13 @@ void CodeGen::CodeGenVisitor::visit(const ASTNode *node)
             visit(node->m_children.front().get());
             skipFirstChild = true;
 
-            m_labels.push(m_labelCount++);
-            emitLabel(m_labels.top());
+            m_labels.push(m_code.size() /* address of next instruction */);
+            //emitLabel(m_labels.top());
         }
         break;
     case ASTNode::NodeType::INT:    // literal
         {
-            emit("LIT ");
-            emit(node->m_integer);
+            emit(VM::Instruction::LIT, static_cast<uint16_t>(node->m_integer));
         }
         break;
     }
@@ -137,7 +169,8 @@ void CodeGen::CodeGenVisitor::visit(const ASTNode *node)
     case ASTNode::NodeType::PROCDEF:
         {
             // TODO: stack cleanup
-            emit("RET\n");
+            emit(VM::Instruction::RET);
+            //emit("RET\n");
             comment("# ENDPROC ");
             comment(node->m_name);
             comment("\n\n");
@@ -157,8 +190,9 @@ void CodeGen::CodeGenVisitor::visit(const ASTNode *node)
                 comment("# calling ");
                 comment(node->m_name);
                 comment("\n");    
-                emit("CALL ");
-                emit(opt.value().m_address);  // address
+                //emit("CALL ");
+                //emit(opt.value().m_address);  // address
+                emit(VM::Instruction::CALL, static_cast<uint16_t>(opt.value().m_address));
             }
         }
         break;       
@@ -177,8 +211,9 @@ void CodeGen::CodeGenVisitor::visit(const ASTNode *node)
                     comment(node->m_name);
                     comment("\n");
 
-                    emit("SETPIN ");
-                    emit(opt.value().m_integer);
+                    //emit("SETPIN ");
+                    //emit(opt.value().m_integer);
+                    emit(VM::Instruction::SETPIN, static_cast<uint8_t>(opt.value().m_integer));
                 }
                 else
                 {
@@ -189,14 +224,16 @@ void CodeGen::CodeGenVisitor::visit(const ASTNode *node)
                     if (node->m_integer >= 0)
                     {
                         // set bit
-                        emit("SETBIT ", node->m_integer);
-                        emit(opt.value().m_address);
+                        emit(VM::Instruction::SETBIT, static_cast<uint8_t>(node->m_integer));
+                        //emit("SETBIT ", );
+                        //emit(opt.value().m_address);
                     }
                     else
                     {
                         // regular 16-bit store
-                        emit("STORE ");
-                        emit(opt.value().m_address);
+                        emit(VM::Instruction::STORE, static_cast<uint16_t>(opt.value().m_address));
+                        //emit("STORE ");
+                        //emit(opt.value().m_address);
                     }                                     
                 }                                
             }
@@ -204,22 +241,28 @@ void CodeGen::CodeGenVisitor::visit(const ASTNode *node)
         break;                         
     case ASTNode::NodeType::WAIT:    // literal
         {
-            emit("WAIT\n");
+            emit(VM::Instruction::WAIT);
         }
         break;        
     case ASTNode::NodeType::SHR:
         {
-            emit("SHR\n");
+            emit(VM::Instruction::SHR);
         }
         break;        
     case ASTNode::NodeType::ENDREP:
         {
-            emit("DEC\n");
-            emit("JNZ loc_");
-            emit(m_labels.top());
+            emit(VM::Instruction::DEC);
+            emit(VM::Instruction::JNZ, static_cast<uint16_t>(m_labels.top()));
             m_labels.pop();
-            emit("POP\n");
-            comment("# ENDREP\n");
+            emit(VM::Instruction::POP);
+            emit(VM::Instruction::RET);
+
+            //emit("DEC\n");
+            //emit("JNZ loc_");
+            //emit(m_labels.top());
+            //m_labels.pop();
+            //emit("POP\n");
+            //comment("# ENDREP\n");
             //emit("RET\n");
         }
         break;

@@ -1,9 +1,11 @@
 #include <cstdlib>
 #include <fstream>
+#include <iomanip>
 #include "lexer.h"
 #include "parser.h"
 #include "astmanip.h"
 #include "codegen.h"
+#include "disasm.h"
 
 struct DumpVisitor : public AbstractConstVisitor
 {
@@ -74,6 +76,20 @@ int main(int argc, char *argv[])
     CodeGen::CodeGenVisitor cg(std::cout);
     cg.visit(ast.get());
     std::cout << "\n\n";
+
+    auto vmcode = cg.m_code;
+
+    size_t address = 0;
+    while(address < vmcode.size())
+    {
+        auto oldflags = std::cout.flags();
+
+        auto result = VM::disasm(&vmcode.at(address));
+        std::cout << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << address << result.m_txt;
+        address += result.m_bytes;
+
+        std::cout.flags(oldflags);
+    }
 
     return EXIT_SUCCESS;
 }

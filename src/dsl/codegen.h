@@ -2,6 +2,7 @@
 
 #include <stack>
 #include <iomanip>
+#include "vm.h"
 #include "ast.h"
 #include "symtbl.h"
 
@@ -14,6 +15,7 @@ struct CodeGenVisitor : public AbstractConstVisitor
 
     void visit(const ASTNode *node) override;
 
+#if 0
     void emitLiteral(uint16_t value)
     {
         
@@ -44,6 +46,12 @@ struct CodeGenVisitor : public AbstractConstVisitor
         m_os << v << "\n";
         m_address++;
     }
+#endif
+
+    void emit(VM::Instruction opcode);
+    void emit(VM::Instruction opcode, uint8_t value);
+    void emit(VM::Instruction opcode, uint16_t value);
+    void emit(VM::Instruction opcode, uint8_t v1, uint8_t v2);
 
     void emitLabel(int16_t v)
     {
@@ -60,9 +68,12 @@ struct CodeGenVisitor : public AbstractConstVisitor
         m_os << v;
     }
 
+    std::vector<uint8_t> m_code;
+
     SymTbl::Table   m_syms;
     int             m_address = 0;
     int             m_labelCount = 0;
+    
     std::stack<int> m_labels;
     std::ostream    &m_os;
 };

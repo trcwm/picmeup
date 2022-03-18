@@ -7,6 +7,7 @@ add_executable(dsl_test
     ../../src/dsl/astmanip.cpp
     ../../src/dsl/ast.cpp
     ../../src/dsl/vm.cpp
+    ../../src/dsl/disasm.cpp
     main.cpp
 )
 
