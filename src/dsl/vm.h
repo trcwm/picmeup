@@ -43,12 +43,38 @@ enum class Instruction : uint8_t
 class Machine
 {
 public:
+    void reset();
+
+    bool load(const uint8_t *code, size_t bytes);
 
     void execInstruction();
 
+    void push(uint16_t v);
+    void setIP(uint16_t address);
+
+    constexpr uint16_t getIP() const noexcept
+    {
+        return m_ip;
+    }
+
+    constexpr uint16_t getTOS() const noexcept
+    {
+        return m_stack[m_sp];
+    }
+
+    constexpr uint16_t getSP() const noexcept
+    {
+        return m_sp;
+    }
+
+    constexpr uint16_t getBP() const noexcept
+    {
+        return m_bp;
+    }
+
 protected:
     uint16_t getWord(const uint16_t address) const;
-    void push(uint16_t v);
+
     uint16_t pop();
     uint16_t& tos();
 

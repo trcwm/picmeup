@@ -1,3 +1,6 @@
+#include <limits.h>
+#include <string.h>
+#include <iostream>
 #include "vm.h"
 
 uint16_t VM::Machine::getWord(const uint16_t address) const
@@ -75,23 +78,31 @@ void VM::Machine::execInstruction()
         break;
     case Instruction::WAIT:
         // not implemented on PC
-        m_ip++;
         imm16 = pop();  // wait amount in ns
         break;
     case Instruction::SETOUTPUT:
         // not implemented on PC
         imm8 = m_code[m_ip++];    // pin number
+        std::cout << "  ** SET PIN " << static_cast<int>(imm8) << " TO OUTPUT\n";
         break;
     case Instruction::SETINPUT:
         // not implemented on PC
         imm8 = m_code[m_ip++];    // pin number
+        std::cout << "  ** SET PIN " << static_cast<int>(imm8) << " TO INPUT\n";
         break;
     case Instruction::SETPIN:
         // not implemented on PC
         imm8 = m_code[m_ip++];    // pin number
         // get TOS and set pin
+        if (m_stack[m_sp--] != 0)
+        {
+            std::cout << " **** PIN " << static_cast<int>(imm8) << " = 1\n";
+        }
+        else
+        {
+            std::cout << " **** PIN " << static_cast<int>(imm8) << " = 0\n";
+        }
         //imm8 = m_code[m_ip++];    // pin state
-        pop();
         break;
     case Instruction::GETPIN:
         // not implemented on PC
@@ -122,9 +133,16 @@ void VM::Machine::execInstruction()
         m_bp = m_sp;
         m_ip = imm16;
         break;
-    case Instruction::RET:        
-        m_ip = pop();           // get return address
-        m_bp = pop();           // get previous BP
+    case Instruction::RET:
+        if (m_sp == std::numeric_limits<decltype(m_sp)>::max())
+        {
+            true;
+        }
+        else
+        {
+            m_ip = pop();           // get return address
+            m_bp = pop();           // get previous BP
+        }
         break;
     case Instruction::RX8:
         // not implemented on PC
@@ -146,4 +164,27 @@ void VM::Machine::execInstruction()
         m_stack[m_sp] >>= 1;
         break;        
     }
+}
+
+void VM::Machine::setIP(uint16_t address)
+{
+    m_ip = address;
+}
+
+void VM::Machine::reset()
+{
+    m_bp = 0;
+    m_sp = std::numeric_limits<decltype(m_sp) >::max();
+    m_ip = 0;
+}
+
+bool VM::Machine::load(const uint8_t *code, size_t bytes)
+{
+    if (m_code.size() > bytes)
+    {
+        memcpy(&m_code.at(0), code, bytes);
+        return true;
+    }
+
+    return false;
 }

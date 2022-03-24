@@ -113,7 +113,7 @@ void CodeGen::CodeGenVisitor::visit(const ASTNode *node)
                     comment("# VARIABLE ");
                     comment(node->m_name);
 
-                    emit(VM::Instruction::LOAD, static_cast<uint16_t>(opt.value().m_address));
+                    emit(VM::Instruction::LOAD, static_cast<uint8_t>(opt.value().m_address));
 
                     // check for bit access
                     if (node->m_integer >= 0)
@@ -231,7 +231,7 @@ void CodeGen::CodeGenVisitor::visit(const ASTNode *node)
                     else
                     {
                         // regular 16-bit store
-                        emit(VM::Instruction::STORE, static_cast<uint16_t>(opt.value().m_address));
+                        emit(VM::Instruction::STORE, static_cast<uint8_t>(opt.value().m_address));
                         //emit("STORE ");
                         //emit(opt.value().m_address);
                     }                                     

@@ -91,5 +91,30 @@ int main(int argc, char *argv[])
         std::cout.flags(oldflags);
     }
 
+    VM::Machine vm;
+    vm.reset();
+    if (vm.load(&vmcode.at(0), vmcode.size()))
+    {
+        std::cout << "VM loaded\n";
+    }
+
+    // execute a PROC send
+    vm.setIP(0x000);
+    vm.push(0xAA55);
+    vm.push(16);
+
+    for(uint32_t i=0; i<300; i++)
+    {
+        //auto oldflags = std::cout.flags();
+
+        //auto result = VM::disasm(&vmcode.at(vm.getIP()));
+        //std::cout << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << vm.getIP() << result.m_txt;
+
+        //std::cout.flags(oldflags);
+
+        vm.execInstruction();
+        //std::cout << "  TOS:" << vm.getTOS() << "  SP:" << vm.getSP() << "  BP:" << vm.getBP() << "  new IP:" << vm.getIP() << "\n";
+    }
+
     return EXIT_SUCCESS;
 }

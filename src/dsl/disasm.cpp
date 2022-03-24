@@ -16,12 +16,12 @@ VM::DisasmResult VM::disasm(const uint8_t *code)
         result.m_bytes = 3;
         break;
     case VM::Instruction::LOAD:
-        ss << "\tLOAD @" << imm16 << "\n";
-        result.m_bytes = 3;
+        ss << "\tLOAD @" << static_cast<int>(code[1]) << "\n";
+        result.m_bytes = 2;
         break;
     case VM::Instruction::STORE:
-        ss << "\tSTORE @" << imm16 << "\n";
-        result.m_bytes = 3;
+        ss << "\tSTORE @" << static_cast<int>(code[1]) << "\n";
+        result.m_bytes = 2;
         break;        
     case VM::Instruction::CALL:
         ss << "\tCALL @" << imm16 << "\n";
@@ -40,7 +40,7 @@ VM::DisasmResult VM::disasm(const uint8_t *code)
         result.m_bytes = 1;
         break;
     case VM::Instruction::RET:
-        ss << "\tINC\n";
+        ss << "\tRET\n";
         result.m_bytes = 1;
         break;        
     case VM::Instruction::POP:
@@ -90,7 +90,7 @@ VM::DisasmResult VM::disasm(const uint8_t *code)
     default:
         ss << "\t??????\n";
         result.m_bytes = 1;
-        break;    
+        break;
     }
 
     result.m_txt = ss.str();
