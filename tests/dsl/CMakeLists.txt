@@ -1,5 +1,7 @@
 project(dsl_test)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+
 add_executable(dsl_test        
     ../../src/dsl/lexer.cpp
     ../../src/dsl/parser.cpp

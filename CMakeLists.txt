@@ -4,6 +4,10 @@
 cmake_minimum_required(VERSION 3.20)
 project(picmeup LANGUAGES CXX ASM VERSION 0.1)
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -26,6 +30,9 @@ add_executable(picmeup
     src/serial.cpp
     src/main.cpp
 )
+
+# for Linux, add -fPIC too, so the executable does not get identified
+# as a shared library
 
 add_custom_command(OUTPUT ${PROJECT_SOURCE_DIR}/src/devices.S
     COMMAND touch ${PROJECT_SOURCE_DIR}/src/devices.S
